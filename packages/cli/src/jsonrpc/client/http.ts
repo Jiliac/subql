@@ -29,3 +29,24 @@ export class HttpJsonRpcClient {
     return (res.data as ResponseSuccess<T>).result;
   }
 }
+
+export class SimpleHttpClient {
+  protected axios: AxiosInstance;
+  constructor(url: string) {
+    this.axios = axios.create({
+      baseURL: url,
+      timeout: TIMEOUT,
+    });
+  }
+
+  async get<T extends ResponseSuccessType>(method: string, params?: string[]): Promise<T> {
+    const args = [method].concat(params);
+
+    args.unshift(method);
+    const res = await this.axios.get<Response<T>>(args.join('/'));
+    if ((res.data as ResponseError).error) {
+      throw (res.data as ResponseError).error;
+    }
+    return (res.data as ResponseSuccess<T>).result;
+  }
+}

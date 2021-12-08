@@ -6,11 +6,33 @@ import path from 'path';
 import {Command, flags} from '@oclif/command';
 import cli from 'cli-ux';
 import {createProject, installDependencies} from '../controller/init-controller';
-import {getGenesisHash} from '../jsonrpc';
-import {ProjectSpecBase, ProjectSpecV0_2_0} from '../types';
+import {getAlgorandGenesisHash, getGenesisHash} from '../jsonrpc';
+import {BlockchainType, ProjectSpecBase, ProjectSpecV0_2_0, ProjectSpecV0_2_1} from '../types';
 
 export default class Init extends Command {
   static description = 'Initialize a scaffold subquery project';
+
+  static blockChainGenesisGetters(blockChain: BlockchainType): (endpoint: string) => Promise<string> {
+    switch (blockChain) {
+      case 'polkadot':
+        return getGenesisHash;
+      case 'algorand':
+        return getAlgorandGenesisHash;
+      default:
+        return () => Promise.resolve('');
+    }
+  }
+
+  static defaultEndpoints(blockChain: BlockchainType): string {
+    switch (blockChain) {
+      case 'polkadot':
+        return 'wss://polkadot.api.onfinality.io/public-ws';
+      case 'algorand':
+        return 'https://indexer.algoexplorerapi.io';
+      default:
+        return '';
+    }
+  }
 
   static flags = {
     force: flags.boolean({char: 'f'}),
@@ -22,9 +44,15 @@ export default class Init extends Command {
     npm: flags.boolean({description: 'Force using NPM instead of yarn, only works with `install-dependencies` flag'}),
     specVersion: flags.string({
       required: false,
-      options: ['0.0.1', '0.2.0'],
-      default: '0.2.0',
+      options: ['0.0.1', '0.2.0', '0.2.1'],
+      default: '0.2.1',
       description: 'The spec version to be used by the project',
+    }),
+    blockChain: flags.string({
+      required: false,
+      options: ['polkadot', 'algorand'],
+      default: 'polkadot',
+      description: 'The blockchain to be used by the project',
     }),
   };
 
@@ -50,13 +78,25 @@ export default class Init extends Command {
     project.repository = await cli.prompt('Git repository', {required: false});
 
     project.endpoint = await cli.prompt('RPC endpoint', {
-      default: 'wss://polkadot.api.onfinality.io/public-ws',
+      default: Init.defaultEndpoints(flags.blockChain as BlockchainType),
       required: true,
     });
 
     if (flags.specVersion === '0.2.0') {
       cli.action.start('Getting network genesis hash');
       (project as ProjectSpecV0_2_0).genesisHash = await getGenesisHash(project.endpoint);
+      cli.action.stop();
+    }
+
+    if (flags.specVersion === '0.2.1') {
+      cli.action.start('Getting network genesis hash');
+
+      const genesisHashGetter = Init.blockChainGenesisGetters(flags.blockChain as BlockchainType);
+
+      (project as ProjectSpecV0_2_1).blockchainType = flags.blockChain as BlockchainType;
+
+      (project as ProjectSpecV0_2_1).genesisHash = await genesisHashGetter(project.endpoint);
+
       cli.action.stop();
     }
 

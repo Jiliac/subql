@@ -10,6 +10,7 @@ import {
   ProjectManifestVersioned,
   manifestIsV0_0_1,
   manifestIsV0_2_0,
+  manifestIsV0_2_1,
   loadFromJsonOrYaml,
 } from '@subql/common';
 import { SubqlDatasource } from '@subql/types';
@@ -62,7 +63,7 @@ export class SubqueryProject {
       };
     }
 
-    if (manifestIsV0_2_0(impl)) {
+    if (manifestIsV0_2_0(impl) || manifestIsV0_2_1(impl)) {
       const network = {
         ...impl.network,
         ...this.networkOverrides,
@@ -104,7 +105,7 @@ export class SubqueryProject {
       ]);
     }
 
-    if (manifestIsV0_2_0(impl)) {
+    if (manifestIsV0_2_0(impl) || manifestIsV0_2_1(impl)) {
       if (!impl.network.chaintypes) {
         return;
       }
