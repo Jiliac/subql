@@ -14,7 +14,7 @@ import { FetchService } from './fetch.service';
 import { IndexerManager } from './indexer.manager';
 import { MmrService } from './mmr.service';
 import { PoiService } from './poi.service';
-import { PokadotApiInitializer } from './polkadot/pokadot-api-initializer';
+import { PolkadotApiInitializer } from './polkadot/polkadot-api-initializer';
 import { SandboxService } from './sandbox.service';
 import { StoreService } from './store.service';
 
@@ -29,7 +29,7 @@ function apiServiceFactory(
     return new ApiService(project, eventEmitter, new AlgorandApiInitializer());
   }
 
-  return new ApiService(project, eventEmitter, new PokadotApiInitializer());
+  return new ApiService(project, eventEmitter, new PolkadotApiInitializer());
 }
 
 @Module({

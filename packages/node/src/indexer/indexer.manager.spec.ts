@@ -18,6 +18,7 @@ import { MmrService } from './mmr.service';
 import { PoiService } from './poi.service';
 import { SandboxService } from './sandbox.service';
 import { StoreService } from './store.service';
+import { PolkadotApiInitializer } from './polkadot/polkadot-api-initializer';
 
 jest.mock('sequelize', () => {
   const mSequelize = {
@@ -136,7 +137,7 @@ function createIndexerManager(project: SubqueryProject): IndexerManager {
   const sequilize = new Sequelize();
   const eventEmitter = new EventEmitter2();
 
-  const apiService = new ApiService(project, eventEmitter);
+  const apiService = new ApiService(project, eventEmitter, new PolkadotApiInitializer());
   const dictionaryService = new DictionaryService(project);
 
   const dsPluginService = new DsProcessorService(project);
