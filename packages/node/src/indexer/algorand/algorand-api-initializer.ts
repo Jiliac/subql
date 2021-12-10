@@ -32,7 +32,7 @@ export class AlgorandApiInitializer implements ApiInitializer {
         algorand: {
           blocks: {
             alias: ['blocks'],
-            aliasSection: 'blah',
+            aliasSection: 'blocks',
             description: 'Get blocks',
             endpoint: 'v2/blocks',
             isSigned: false,
@@ -41,7 +41,7 @@ export class AlgorandApiInitializer implements ApiInitializer {
           },
           transactions: {
             alias: ['transactions'],
-            aliasSection: 'blah',
+            aliasSection: 'transactions',
             description: 'Get transactions',
             endpoint: 'v2/transactions',
             isSigned: false,

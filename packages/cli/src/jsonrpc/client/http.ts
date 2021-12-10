@@ -42,7 +42,6 @@ export class SimpleHttpClient {
   async get<T extends ResponseSuccessType>(method: string, params?: string[]): Promise<T> {
     const args = [method].concat(params);
 
-    args.unshift(method);
     const res = await this.axios.get<Response<T>>(args.join('/'));
     if ((res.data as ResponseError).error) {
       throw (res.data as ResponseError).error;

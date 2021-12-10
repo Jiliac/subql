@@ -5,7 +5,7 @@ import { ApiPromise, HttpProvider, WsProvider } from '@polkadot/api';
 import { ApiInitializer } from '../../configure/api-initializer.interface';
 import { SubqueryProject } from '../../configure/project.model';
 
-export class PokadotApiInitializer implements ApiInitializer {
+export class PolkadotApiInitializer implements ApiInitializer {
   async init(project: SubqueryProject): Promise<ApiPromise> {
     const { chainTypes, network } = project;
     let provider: WsProvider | HttpProvider;

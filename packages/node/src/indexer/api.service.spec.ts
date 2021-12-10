@@ -7,6 +7,7 @@ import { ProjectManifestVersioned, ProjectNetworkV0_0_1 } from '@subql/common';
 import { omit } from 'lodash';
 import { SubqueryProject } from '../configure/project.model';
 import { ApiService } from './api.service';
+import { PolkadotApiInitializer } from './polkadot/polkadot-api-initializer';
 
 jest.mock('@polkadot/api', () => {
   const ApiPromise = jest.fn();
@@ -58,7 +59,11 @@ function testSubqueryProject(): SubqueryProject {
 describe('ApiService', () => {
   it('read custom types from project manifest', async () => {
     const project = testSubqueryProject();
-    const apiService = new ApiService(project, new EventEmitter2());
+    const apiService = new ApiService(
+      project,
+      new EventEmitter2(),
+      new PolkadotApiInitializer(),
+    );
     await apiService.init();
     expect(WsProvider).toHaveBeenCalledWith(testNetwork.endpoint);
     expect(ApiPromise.create).toHaveBeenCalledWith({
@@ -73,7 +78,11 @@ describe('ApiService', () => {
 
     (project.projectManifest.asV0_0_1.network as any).genesisHash = '0x';
 
-    const apiService = new ApiService(project, new EventEmitter2());
+    const apiService = new ApiService(
+      project,
+      new EventEmitter2(),
+      new PolkadotApiInitializer(),
+    );
 
     await expect(apiService.init()).rejects.toThrow();
   });

@@ -34,6 +34,7 @@ export interface ProjectManifestV0_2_1 extends IProjectManifest {
 
   network: {
     genesisHash: string;
+    blockchainType: string;
     endpoint?: string;
     dictionary?: string;
     chaintypes?: {

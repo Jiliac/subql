@@ -5406,6 +5406,7 @@ __metadata:
     "@types/tar": ^6.1.0
     "@types/yargs": ^16.0.4
     "@willsoto/nestjs-prometheus": ^4.2.0
+    algosdk: ^1.12.0
     app-module-path: ^2.2.0
     dayjs: ^1.10.7
     dotenv: ^10.0.0
@@ -7760,6 +7761,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"algo-msgpack-with-bigint@npm:^2.1.1":
+  version: 2.1.1
+  resolution: "algo-msgpack-with-bigint@npm:2.1.1"
+  checksum: 696b7a0ef3bc477a7a7744831b3ad90a06dcaf19fe742ae2b13471c2e54c8e72f96fd6c9e7376b6d1ca28500eb64deb64f3af7da4dc8a296f6e54dffdc7fc4ff
+  languageName: node
+  linkType: hard
+
 "algoliasearch@npm:^3.24.5":
   version: 3.35.1
   resolution: "algoliasearch@npm:3.35.1"
@@ -7802,6 +7810,24 @@ __metadata:
     "@algolia/requester-node-http": 4.10.5
     "@algolia/transporter": 4.10.5
   checksum: 09d9b5178000b26f017a64c6e49546dd464336b1613a98537fa094f4357b5f78d2110d0ce3cca97c1748782aba64c67417e21390f73ecb97b48f59e9b289435f
+  languageName: node
+  linkType: hard
+
+"algosdk@npm:^1.12.0":
+  version: 1.12.0
+  resolution: "algosdk@npm:1.12.0"
+  dependencies:
+    algo-msgpack-with-bigint: ^2.1.1
+    buffer: ^6.0.2
+    hi-base32: ^0.5.1
+    js-sha256: ^0.9.0
+    js-sha3: ^0.8.0
+    js-sha512: ^0.8.0
+    json-bigint: ^1.0.0
+    superagent: ^6.1.0
+    tweetnacl: ^1.0.3
+    url-parse: ^1.5.1
+  checksum: fe7485dd5e81df4f9745827ebfad41a36f83f6832fe8b8a78d443284c259cb5d4e71e546612c09a765507f899b23a4aa01f53bd06fbdaa5bebcad7ddc5a49869
   languageName: node
   linkType: hard
 
@@ -8785,6 +8811,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"bignumber.js@npm:^9.0.0":
+  version: 9.0.1
+  resolution: "bignumber.js@npm:9.0.1"
+  checksum: 605e9639c413f344c37b23e919254f60a5017cc5ccd925e2f8fb79b36aa3d54f356df9c726f38465263236455f685d60dcf38dbe32cb0b7e4d2a32c94b035476
+  languageName: node
+  linkType: hard
+
 "binary-extensions@npm:^1.0.0":
   version: 1.13.1
   resolution: "binary-extensions@npm:1.13.1"
@@ -9216,7 +9249,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"buffer@npm:^6.0.1, buffer@npm:^6.0.3":
+"buffer@npm:^6.0.1, buffer@npm:^6.0.2, buffer@npm:^6.0.3":
   version: 6.0.3
   resolution: "buffer@npm:6.0.3"
   dependencies:
@@ -14761,6 +14794,13 @@ fsevents@~2.3.1:
   languageName: node
   linkType: hard
 
+"hi-base32@npm:^0.5.1":
+  version: 0.5.1
+  resolution: "hi-base32@npm:0.5.1"
+  checksum: 394b75c58f74f68d86905820dbacc12b9c6596cf1cb09068bcbea4094f5ff343b6d2639ce6bd205f5407ff0f39d5aa2fe945ad912004eacd2abb7e953880dadd
+  languageName: node
+  linkType: hard
+
 "highlight.js@npm:^9.7.0":
   version: 9.18.5
   resolution: "highlight.js@npm:9.18.5"
@@ -17035,10 +17075,24 @@ fsevents@~2.3.1:
   languageName: node
   linkType: hard
 
+"js-sha256@npm:^0.9.0":
+  version: 0.9.0
+  resolution: "js-sha256@npm:0.9.0"
+  checksum: 0bef2c83a7bceb2c54ea580fac3c69b5b5c422f590a0c514f6a9440a1c809359514d0ad5f0be52b95e0dd929c348b9f8153b9c1d5b0fa9bcf56b800791e304fb
+  languageName: node
+  linkType: hard
+
 "js-sha3@npm:0.8.0, js-sha3@npm:^0.8.0":
   version: 0.8.0
   resolution: "js-sha3@npm:0.8.0"
   checksum: 21d7129a634d7e9072a00fa0c037a3f7192d9a2d85377ecbbc7a614fbf523d31cc7489c74adfa84d606d58eb5bffb9dbfbe53bb618ec371942e63070559f3719
+  languageName: node
+  linkType: hard
+
+"js-sha512@npm:^0.8.0":
+  version: 0.8.0
+  resolution: "js-sha512@npm:0.8.0"
+  checksum: 22732dafb1b5fe4c6a5304570d5c4d4ab74d4670d3485f7f002cf9bd813ae7b5710b96a5cbb0b47cc53673292b660363a6f03a0c257a3bb2906938439e4f4bcd
   languageName: node
   linkType: hard
 
@@ -17134,6 +17188,15 @@ fsevents@~2.3.1:
   bin:
     jsesc: bin/jsesc
   checksum: 1e4574920d3c17c9167fdc14ca66197e8d5d96fb3f37c7473df7857822b7adbf2954d0e126131456f8fd72b6f6908c2367e7a12c18495a5393c37be99acbbb5a
+  languageName: node
+  linkType: hard
+
+"json-bigint@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "json-bigint@npm:1.0.0"
+  dependencies:
+    bignumber.js: ^9.0.0
+  checksum: f6c550e09f25416d07d888db88e3cec6c13443b4c0ed5a903dc39b9870fc5adc77aecc30a2d4373888abce7526410a42b0bcf926382a399a285686163a479801
   languageName: node
   linkType: hard
 

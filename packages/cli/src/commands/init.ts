@@ -28,7 +28,7 @@ export default class Init extends Command {
       case 'polkadot':
         return 'wss://polkadot.api.onfinality.io/public-ws';
       case 'algorand':
-        return 'https://indexer.algoexplorerapi.io';
+        return 'https://algoexplorerapi.io';
       default:
         return '';
     }

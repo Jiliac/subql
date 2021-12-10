@@ -11,7 +11,7 @@ import {
 import {plainToClass, Type} from 'class-transformer';
 import {Equals, IsArray, IsObject, IsOptional, IsString, ValidateNested, validateSync} from 'class-validator';
 import yaml from 'js-yaml';
-import {FileType, RuntimeDataSourceV0_2_0Impl} from '..';
+import {FileType} from '..';
 import {CustomDataSourceBase, Mapping, RuntimeDataSourceBase} from '../../models';
 import {ProjectManifestBaseImpl} from '../base';
 import {CustomDatasourceV0_2_1, ProjectManifestV0_2_1, RuntimeDataSourceV0_2_1, SubqlMappingV0_2_1} from './types';
@@ -70,10 +70,7 @@ export class DeploymentV0_2_1 {
   @Type(() => CustomDataSourceV0_2_1Impl, {
     discriminator: {
       property: 'kind',
-      subTypes: [
-        {value: RuntimeDataSourceV0_2_0Impl, name: 'substrate/Runtime'},
-        {value: RuntimeDataSourceV0_2_1Impl, name: 'algorand'},
-      ],
+      subTypes: [{value: RuntimeDataSourceV0_2_1Impl, name: 'substrate/Runtime'}],
     },
     keepDiscriminatorProperty: true,
   })
@@ -102,10 +99,7 @@ export class ProjectManifestV0_2_1Impl extends ProjectManifestBaseImpl implement
   @Type(() => CustomDataSourceV0_2_1Impl, {
     discriminator: {
       property: 'kind',
-      subTypes: [
-        {value: RuntimeDataSourceV0_2_0Impl, name: 'substrate/Runtime'},
-        {value: RuntimeDataSourceV0_2_1Impl, name: 'algorand'},
-      ],
+      subTypes: [{value: RuntimeDataSourceV0_2_1Impl, name: 'substrate/Runtime'}],
     },
     keepDiscriminatorProperty: true,
   })

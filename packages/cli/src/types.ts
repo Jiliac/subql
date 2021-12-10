@@ -33,5 +33,5 @@ export function isProjectSpecV0_2_0(projectSpec: ProjectSpecBase): projectSpec i
 }
 
 export function isProjectSpecV0_2_1(projectSpec: ProjectSpecBase): projectSpec is ProjectSpecV0_2_1 {
-  return !!(projectSpec as ProjectSpecV0_2_1).genesisHash;
+  return !!(projectSpec as ProjectSpecV0_2_1).blockchainType;
 }
