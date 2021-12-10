@@ -69,7 +69,7 @@ async function prepareManifest(projectPath: string, project: ProjectSpecBase): P
 
   if (isProjectSpecV0_2_1(project)) {
     const projManifest = data as ProjectManifestV0_2_1;
-
+    projManifest.specVersion = '0.2.1';
     projManifest.version = project.version;
     projManifest.name = project.name;
     projManifest.network.genesisHash = project.genesisHash;

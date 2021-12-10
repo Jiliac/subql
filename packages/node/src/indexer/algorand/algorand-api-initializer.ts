@@ -56,7 +56,7 @@ export class AlgorandApiInitializer implements ApiInitializer {
 }
 
 class AlgorandProvider implements ProviderInterface {
-  hasSubscriptions: boolean;
+  hasSubscriptions = true;
   isConnected: boolean;
   algorandApi: algosdk.Algodv2;
 
@@ -64,9 +64,11 @@ class AlgorandProvider implements ProviderInterface {
     const algodToken =
       'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
     const algodServer = endpoint;
-    const algodPort = 4001;
+    const algodPort = 80;
 
     this.algorandApi = new algosdk.Algodv2(algodToken, algodServer, algodPort);
+
+    this.isConnected = true;
   }
 
   clone(): ProviderInterface {
@@ -78,6 +80,7 @@ class AlgorandProvider implements ProviderInterface {
   async disconnect(): Promise<void> {
     return Promise.resolve();
   }
+
   on(type: ProviderInterfaceEmitted, sub: ProviderInterfaceEmitCb): () => void {
     return () => console.log('Yep');
   }
@@ -90,6 +93,21 @@ class AlgorandProvider implements ProviderInterface {
     params: unknown[],
     isCacheable?: boolean,
   ): Promise<T> {
+    const methodTokens = method.split('_');
+    const category = methodTokens[0];
+    const methodName = methodTokens[1];
+
+    if (category === 'chain' && methodName === 'getBlockHash') {
+      try {
+        const blockHash = this.algorandApi.block(params[0] as number);
+        const block = await blockHash.do();
+
+        return Promise.resolve(block as any);
+      } catch (error) {
+        console.log(`Failed to retrieve block hash: ${error.message}`);
+      }
+    }
+
     return Promise.resolve<T>(null);
   }
 
