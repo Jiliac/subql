@@ -18,9 +18,6 @@ export class AlgorandApiInitializer implements ApiInitializer {
     // configure for algorand
     const { network } = project;
 
-    // FIXME: how to delegate calls to http provider to the algosdk?
-    // const algProvider = new algosdk.Algodv2(algodToken, algodServer, algodPort);
-
     const provider = new AlgorandProvider(network.endpoint);
 
     const throwOnConnect = true;
@@ -28,28 +25,28 @@ export class AlgorandApiInitializer implements ApiInitializer {
     const apiOption: ApiOptions = {
       provider,
       throwOnConnect,
-      rpc: {
-        algorand: {
-          blocks: {
-            alias: ['blocks'],
-            aliasSection: 'blocks',
-            description: 'Get blocks',
-            endpoint: 'v2/blocks',
-            isSigned: false,
-            params: [{ name: 'blockNum', type: 'number' }],
-            type: 'string',
-          },
-          transactions: {
-            alias: ['transactions'],
-            aliasSection: 'transactions',
-            description: 'Get transactions',
-            endpoint: 'v2/transactions',
-            isSigned: false,
-            params: [{ name: 'transactionNum', type: 'number' }],
-            type: 'string',
-          },
-        },
-      },
+      // rpc: {
+      //   chain: {
+      //     getBlock: {
+      //       alias: ['blocks'],
+      //       aliasSection: 'blocks',
+      //       description: 'Get blocks',
+      //       endpoint: 'v2/blocks',
+      //       isSigned: false,
+      //       params: [{ name: 'blockNum', type: 'number' }],
+      //       type: 'string',
+      //     },
+      //     getTransaction: {
+      //       alias: ['transactions'],
+      //       aliasSection: 'transactions',
+      //       description: 'Get transactions',
+      //       endpoint: 'v2/transactions',
+      //       isSigned: false,
+      //       params: [{ name: 'transactionNum', type: 'number' }],
+      //       type: 'string',
+      //     },
+      //   },
+      // },
     };
 
     const retVal = await ApiPromise.create(apiOption);
@@ -84,6 +81,10 @@ class AlgorandProvider implements ProviderInterface {
   on(type: ProviderInterfaceEmitted, sub: ProviderInterfaceEmitCb): () => void {
     return () => console.log('Yep');
   }
+
+  // FIXME: how to delegate calls to http provider to the algosdk?
+  // const algProvider = new algosdk.Algodv2(algodToken, algodServer, algodPort);
+
   async send<T = any>(
     method: string,
     params: unknown[],

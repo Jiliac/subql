@@ -46,6 +46,7 @@ export class SimpleHttpClient {
     if ((res.data as ResponseError).error) {
       throw (res.data as ResponseError).error;
     }
-    return (res.data as ResponseSuccess<T>).result;
+
+    return res.data as T;
   }
 }

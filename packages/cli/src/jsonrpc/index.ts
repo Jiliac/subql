@@ -12,7 +12,7 @@ export async function getGenesisHash(endpoint: string): Promise<string> {
 
 export async function getAlgorandGenesisHash(endpoint: string): Promise<string> {
   const client = new SimpleHttpClient(endpoint);
-  const genesisBlock = await client.get<{gh: string}>('v2/blocks', ['0']);
+  const genesisBlock = await client.get<{block: {gh: string}}>('v2/blocks', ['0']);
 
-  return genesisBlock.gh;
+  return genesisBlock.block.gh;
 }

@@ -5,11 +5,11 @@ import childProcess from 'child_process';
 import fs from 'fs';
 import * as path from 'path';
 import {promisify} from 'util';
-import {ProjectManifestV0_0_1, ProjectManifestV0_2_0} from '@subql/common';
+import {ProjectManifestV0_0_1, ProjectManifestV0_2_0, ProjectManifestV0_2_1} from '@subql/common';
 import yaml from 'js-yaml';
 import rimraf from 'rimraf';
 import simpleGit from 'simple-git';
-import {isProjectSpecV0_2_0, ProjectSpecBase} from '../types';
+import {isProjectSpecV0_2_0, isProjectSpecV0_2_1, ProjectSpecBase} from '../types';
 
 const STARTER_PATH = 'https://github.com/subquery/subql-starter';
 
@@ -67,7 +67,14 @@ async function prepareManifest(projectPath: string, project: ProjectSpecBase): P
 
   data.network.endpoint = project.endpoint;
 
-  if (isProjectSpecV0_2_0(project)) {
+  if (isProjectSpecV0_2_1(project)) {
+    const projManifest = data as ProjectManifestV0_2_1;
+
+    projManifest.version = project.version;
+    projManifest.name = project.name;
+    projManifest.network.genesisHash = project.genesisHash;
+    projManifest.network.blockchainType = project.blockchainType;
+  } else if (isProjectSpecV0_2_0(project)) {
     (data as ProjectManifestV0_2_0).version = project.version;
     (data as ProjectManifestV0_2_0).name = project.name;
     data.network.genesisHash = project.genesisHash;

@@ -11,6 +11,7 @@ import {
   RuntimeDataSourceV0_0_1,
   isCustomDs,
   isRuntimeDs,
+  isRuntimeDataSourceV0_2_1,
 } from '@subql/common';
 import {
   SubqlCallFilter,
@@ -154,6 +155,7 @@ export class FetchService implements OnApplicationShutdown {
     const dataSources = this.project.dataSources.filter(
       (ds) =>
         isRuntimeDataSourceV0_2_0(ds) ||
+        isRuntimeDataSourceV0_2_1(ds) ||
         !(ds as RuntimeDataSourceV0_0_1).filter?.specName ||
         (ds as RuntimeDataSourceV0_0_1).filter.specName ===
           this.api.runtimeVersion.specName.toString(),

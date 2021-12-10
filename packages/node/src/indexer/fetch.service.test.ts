@@ -10,6 +10,7 @@ import { ApiService } from './api.service';
 import { DictionaryService } from './dictionary.service';
 import { DsProcessorService } from './ds-processor.service';
 import { FetchService } from './fetch.service';
+import { PolkadotApiInitializer } from './polkadot/polkadot-api-initializer';
 
 function testSubqueryProject(): SubqueryProject {
   const project = new SubqueryProject(
@@ -43,7 +44,11 @@ async function createFetchService(
   project = testSubqueryProject(),
   batchSize = 5,
 ): Promise<FetchService> {
-  const apiService = new ApiService(project, new EventEmitter2());
+  const apiService = new ApiService(
+    project,
+    new EventEmitter2(),
+    new PolkadotApiInitializer(),
+  );
   await apiService.init();
   const dictionaryService = new DictionaryService(project);
   const dsPluginService = new DsProcessorService(project);
