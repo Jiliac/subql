@@ -10,6 +10,7 @@ import {
   ProviderInterfaceEmitted,
 } from '@polkadot/rpc-provider/types';
 import { TypeRegistry } from '@polkadot/types/create'
+import { Metadata } from '@polkadot/types/metadata';
 import algosdk from 'algosdk';
 import { ApiInitializer } from '../../configure/api-initializer.interface';
 import { SubqueryProject } from '../../configure/project.model';
@@ -79,12 +80,15 @@ class AlgorandProvider implements ProviderInterface {
         return Promise.resolve(version as any);
 
       case "state_getMetadata":
-        const metadata = this.registry.createType('MetadataV14', {
-          magicNumber: 2133742,
+        const metadata = new Metadata(this.registry, {
+          magicNumber: 1635018093,
           metadata: {
-            index: 3,
+            v14: {
+              lookup: {}
+            }
           }
         });
+
         return Promise.resolve(metadata as any);
 
       case "system_properties":
