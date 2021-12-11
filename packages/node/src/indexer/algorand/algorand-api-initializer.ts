@@ -80,7 +80,10 @@ class AlgorandProvider implements ProviderInterface {
 
       case "state_getMetadata":
         const metadata = this.registry.createType('MetadataV14', {
-          "index": 1,
+          magicNumber: 2133742,
+          metadata: {
+            index: 3,
+          }
         });
         return Promise.resolve(metadata as any);
 
@@ -99,11 +102,15 @@ class AlgorandProvider implements ProviderInterface {
       case "chain_getBlockHash":
         try {
           const blockReq = this.algorandApi.block(params[0] as number);
-          console.log("Got the request");
           const block = await blockReq.do();
-          console.log("Got the block");
 
-          return Promise.resolve(block as any);
+          let blockHash = block?.cert?.prop?.dig;
+          if (blockHash == null) {
+            blockHash = block.block.gh;
+          }
+
+          const hash = this.registry.createType("Hash", blockHash);
+          return Promise.resolve(hash as any);
         } catch (error) {
           console.log(`Failed to retrieve block hash: ${error.message}`);
         }
