@@ -9,6 +9,7 @@ import {
   ProviderInterfaceEmitCb,
   ProviderInterfaceEmitted,
 } from '@polkadot/rpc-provider/types';
+import { TypeRegistry } from '@polkadot/types/create'
 import algosdk from 'algosdk';
 import { ApiInitializer } from '../../configure/api-initializer.interface';
 import { SubqueryProject } from '../../configure/project.model';
@@ -25,28 +26,6 @@ export class AlgorandApiInitializer implements ApiInitializer {
     const apiOption: ApiOptions = {
       provider,
       throwOnConnect,
-      // rpc: {
-      //   chain: {
-      //     getBlock: {
-      //       alias: ['blocks'],
-      //       aliasSection: 'blocks',
-      //       description: 'Get blocks',
-      //       endpoint: 'v2/blocks',
-      //       isSigned: false,
-      //       params: [{ name: 'blockNum', type: 'number' }],
-      //       type: 'string',
-      //     },
-      //     getTransaction: {
-      //       alias: ['transactions'],
-      //       aliasSection: 'transactions',
-      //       description: 'Get transactions',
-      //       endpoint: 'v2/transactions',
-      //       isSigned: false,
-      //       params: [{ name: 'transactionNum', type: 'number' }],
-      //       type: 'string',
-      //     },
-      //   },
-      // },
     };
 
     const retVal = await ApiPromise.create(apiOption);
@@ -57,6 +36,7 @@ export class AlgorandApiInitializer implements ApiInitializer {
 
 class AlgorandProvider implements ProviderInterface {
   hasSubscriptions = true;
+  registry = new TypeRegistry();
   isConnected: boolean;
   algorandApi: algosdk.Algodv2;
 
@@ -64,7 +44,7 @@ class AlgorandProvider implements ProviderInterface {
     const algodToken =
       'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
     const algodServer = endpoint;
-    const algodPort = 80;
+    const algodPort = 443;
 
     this.algorandApi = new algosdk.Algodv2(algodToken, algodServer, algodPort);
 
@@ -93,19 +73,40 @@ class AlgorandProvider implements ProviderInterface {
     params: unknown[],
     isCacheable?: boolean,
   ): Promise<T> {
-    const methodTokens = method.split('_');
-    const category = methodTokens[0];
-    const methodName = methodTokens[1];
+    switch (method) {
+      case "state_getRuntimeVersion":
+        const version = this.registry.createType('RuntimeVersion', {specVersion: 1});
+        return Promise.resolve(version as any);
 
-    if (category === 'chain' && methodName === 'getBlockHash') {
-      try {
-        const blockHash = this.algorandApi.block(params[0] as number);
-        const block = await blockHash.do();
+      case "state_getMetadata":
+        const metadata = this.registry.createType('MetadataV14', {
+          "index": 1,
+        });
+        return Promise.resolve(metadata as any);
 
-        return Promise.resolve(block as any);
-      } catch (error) {
-        console.log(`Failed to retrieve block hash: ${error.message}`);
-      }
+      case "system_properties":
+        const properties = this.registry.createType('ChainProperties', null);
+        return Promise.resolve(properties as any);
+
+      case "system_chain":
+        const chain = this.registry.createType('Text', "Algorand");
+        return Promise.resolve(chain as any);
+
+      case "rpc_methods":
+        const methods = this.registry.createType('RpcMethods');
+        return Promise.resolve(methods as any);
+
+      case "chain_getBlockHash":
+        try {
+          const blockReq = this.algorandApi.block(params[0] as number);
+          console.log("Got the request");
+          const block = await blockReq.do();
+          console.log("Got the block");
+
+          return Promise.resolve(block as any);
+        } catch (error) {
+          console.log(`Failed to retrieve block hash: ${error.message}`);
+        }
     }
 
     return Promise.resolve<T>(null);
