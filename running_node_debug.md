@@ -37,6 +37,10 @@ export DB_PORT=5432
 - `system_properties`
 - `rpc_methods`
 - `state_getMetadata`
+- `chain_getFinalizedHead`
+- `chain_getHeader`
+- `chain_getBlock`
+- `system_health`
 
 ### Event subscriptions:
 - `connected`

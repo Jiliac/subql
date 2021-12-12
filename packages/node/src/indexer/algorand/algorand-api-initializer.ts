@@ -40,6 +40,7 @@ class AlgorandProvider implements ProviderInterface {
   registry = new TypeRegistry();
   isConnected: boolean;
   algorandApi: algosdk.Algodv2;
+  roundHahes: Record<string, number> = {};
 
   constructor(endpoint: any) {
     const algodToken =
@@ -76,7 +77,7 @@ class AlgorandProvider implements ProviderInterface {
   ): Promise<T> {
     switch (method) {
       case "state_getRuntimeVersion":
-        const version = this.registry.createType('RuntimeVersion', {specVersion: 1});
+        const version = this.registry.createType('RuntimeVersion', { specVersion: 1 });
         return Promise.resolve(version as any);
 
       case "state_getMetadata":
@@ -105,22 +106,72 @@ class AlgorandProvider implements ProviderInterface {
 
       case "chain_getBlockHash":
         try {
-          const blockReq = this.algorandApi.block(params[0] as number);
-          const block = await blockReq.do();
-
-          let blockHash = block?.cert?.prop?.dig;
-          if (blockHash == null) {
-            blockHash = block.block.gh;
-          }
-
-          const hash = this.registry.createType("Hash", blockHash);
+          const hash = await this.getBlockHash(params[0] as number);
           return Promise.resolve(hash as any);
         } catch (error) {
           console.log(`Failed to retrieve block hash: ${error.message}`);
         }
+
+      case "chain_getFinalizedHead":
+        const lastRound = await this.getLastRound();
+        const finalHash = await this.getBlockHash(lastRound);
+        return Promise.resolve(finalHash as any);
+
+      case "chain_getHeader":
+        let blockN: number;
+        if (params.length == 0) {
+          const lastRound = await this.getLastRound();
+          blockN = lastRound;
+        } else {
+          const hashStr = params[0] as string;
+          blockN = this.roundHahes[hashStr];
+          // @TODO: Check result and throw error ?
+          console.log(`Fetched round of block '${blockN}'.`)
+          delete this.roundHahes[hashStr];
+        }
+
+        const header = this.getHeader(blockN);
+        return Promise.resolve(header as any);
     }
 
     return Promise.resolve<T>(null);
+  }
+
+  async getLastRound() {
+    const status = await this.algorandApi.status().do();
+    const lastRound = status['last-round'];
+    return lastRound;
+  }
+
+  async getBlockHash(n: number) {
+    const blockReq = this.algorandApi.block(n);
+    const block = await blockReq.do();
+
+    let blockHash = block?.cert?.prop?.dig;
+    if (blockHash == null) {
+      blockHash = block.block.gh;
+    }
+
+    const hash = this.registry.createType("Hash", blockHash);
+    const hashStr = hash.toString();
+    console.log(`For number '${n}', returning hash: ${hashStr}.`);
+    this.roundHahes[hashStr] = n;
+    return hash;
+  }
+
+  async getHeader(n: number) {
+    const blockReq = this.algorandApi.block(n);
+    const block = await blockReq.do();
+
+    const header = this.registry.createType('Header', {
+      digest: { logs: [] },
+      number: block.block.rnd,
+      parentHash: block.block.prev,
+      block: block.block,
+      cert: block.cert,
+    });
+
+    return header;
   }
 
   async subscribe(
