@@ -82,7 +82,13 @@ class AlgorandProvider implements ProviderInterface {
           magicNumber: 1635018093,
           metadata: {
             v14: {
-              lookup: {}
+              lookup: {},
+              modules: [
+                  {
+                    name: "System",
+                    events: []
+                  },
+              ],
             }
           }
         });
