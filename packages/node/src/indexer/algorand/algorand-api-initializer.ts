@@ -67,9 +67,6 @@ class AlgorandProvider implements ProviderInterface {
     return () => console.log('Yep');
   }
 
-  // FIXME: how to delegate calls to http provider to the algosdk?
-  // const algProvider = new algosdk.Algodv2(algodToken, algodServer, algodPort);
-
   async send<T = any>(
     method: string,
     params: unknown[],
@@ -92,49 +89,70 @@ class AlgorandProvider implements ProviderInterface {
 
         return Promise.resolve(metadata as any);
 
-      case "system_properties":
+      case "system_properties": {
         const properties = this.registry.createType('ChainProperties', null);
         return Promise.resolve(properties as any);
+      }
 
-      case "system_chain":
+      case "system_chain": {
         const chain = this.registry.createType('Text', "Algorand");
         return Promise.resolve(chain as any);
+      }
 
-      case "rpc_methods":
+      case "rpc_methods": {
         const methods = this.registry.createType('RpcMethods');
         return Promise.resolve(methods as any);
+      }
 
-      case "chain_getBlockHash":
+      case "chain_getBlockHash": {
         try {
           const hash = await this.getBlockHash(params[0] as number);
           return Promise.resolve(hash as any);
         } catch (error) {
           console.log(`Failed to retrieve block hash: ${error.message}`);
         }
+      }
 
-      case "chain_getFinalizedHead":
+      case "chain_getFinalizedHead": {
         const lastRound = await this.getLastRound();
         const finalHash = await this.getBlockHash(lastRound);
         return Promise.resolve(finalHash as any);
+      }
 
-      case "chain_getHeader":
-        let blockN: number;
-        if (params.length == 0) {
-          const lastRound = await this.getLastRound();
-          blockN = lastRound;
-        } else {
-          const hashStr = params[0] as string;
-          blockN = this.roundHahes[hashStr];
-          // @TODO: Check result and throw error ?
-          console.log(`Fetched round of block '${blockN}'.`)
-          delete this.roundHahes[hashStr];
-        }
-
+      case "chain_getHeader": {
+        const blockN = await this.getBlockN(params);
         const header = this.getHeader(blockN);
         return Promise.resolve(header as any);
+      }
+
+      case "chain_getBlock": {
+        const blockN = await this.getBlockN(params);
+        const block = this.getBlock(blockN);
+        return Promise.resolve(block as any);
+      }
     }
 
     return Promise.resolve<T>(null);
+  }
+
+  async getBlockN(params) {
+    let blockN: number;
+    if (params.length == 0) {
+      const lastRound = await this.getLastRound();
+      blockN = lastRound;
+    } else {
+      const hashStr = params[0] as string;
+      blockN = this.roundHahes[hashStr];
+      // @TODO: Check result and throw error ?
+
+      //delete this.roundHahes[hashStr];
+      //
+      // This code will be needed at some point otherwise the memory is going to
+      // explode. Better solution ?
+      // Time expiry ? Or delete with a way to recover... ?
+    }
+
+    return blockN;
   }
 
   async getLastRound() {
@@ -154,7 +172,6 @@ class AlgorandProvider implements ProviderInterface {
 
     const hash = this.registry.createType("Hash", blockHash);
     const hashStr = hash.toString();
-    console.log(`For number '${n}', returning hash: ${hashStr}.`);
     this.roundHahes[hashStr] = n;
     return hash;
   }
@@ -172,6 +189,26 @@ class AlgorandProvider implements ProviderInterface {
     });
 
     return header;
+  }
+
+  async getBlock(n: number) {
+    const blockReq = this.algorandApi.block(n);
+    const block = await blockReq.do();
+
+    const subBlock = this.registry.createType('SignedBlock', {
+      block: {
+        header: {
+          digest: { logs: [] },
+          number: block.block.rnd,
+          parentHash: block.block.prev,
+          block: block.block,
+          cert: block.cert,
+        },
+        extrinsics: []
+      }
+    });
+
+    return subBlock;
   }
 
   async subscribe(
