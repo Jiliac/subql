@@ -130,6 +130,11 @@ class AlgorandProvider implements ProviderInterface {
         const block = this.getBlock(blockN);
         return Promise.resolve(block as any);
       }
+
+      case "system_health": {
+        // @TODO: Implement
+        return Promise.resolve<T>(null);
+      }
     }
 
     return Promise.resolve<T>(null);
