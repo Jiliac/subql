@@ -231,7 +231,7 @@ class AlgorandProvider implements ProviderInterface {
     let blockHash = block?.cert?.prop?.dig;
 
     if (!blockHash) {
-      blockHash = block.block.gh;
+      blockHash = await this.getFirstBlockHash();
     }
 
     const hash = this.registry.createType('Hash', blockHash);
@@ -243,6 +243,16 @@ class AlgorandProvider implements ProviderInterface {
     console.log(`Blockhash for block ${n} = ${hashStr}`);
 
     return hashStr;
+  }
+
+  async getFirstBlockHash() {
+    const blockReq = this.algorandApi.block(1);
+
+    const block = await blockReq.do();
+
+    let blockHash = block.block.prev;
+
+    return blockHash;
   }
 
   getHeader(blockHash: string) {
