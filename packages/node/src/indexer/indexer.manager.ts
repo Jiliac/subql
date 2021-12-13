@@ -180,7 +180,8 @@ export class IndexerManager {
     }
 
     void this.fetchService.startLoop(startHeight).catch((err) => {
-      logger.error(err, 'failed to fetch block');
+      logger.error('failed to fetch block');
+      logger.error(err.stack);
       // FIXME: retry before exit
       process.exit(1);
     });

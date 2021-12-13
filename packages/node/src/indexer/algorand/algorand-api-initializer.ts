@@ -1,6 +1,7 @@
 // Copyright 2020-2021 OnFinality Limited authors & contributors
 // SPDX-License-Identifier: Apache-2.0
 
+import { assert } from 'console';
 import { ApiPromise } from '@polkadot/api';
 import { ApiOptions } from '@polkadot/api/types';
 import {
@@ -9,18 +10,21 @@ import {
   ProviderInterfaceEmitCb,
   ProviderInterfaceEmitted,
 } from '@polkadot/rpc-provider/types';
-import { TypeRegistry } from '@polkadot/types/create'
+import { Vec } from '@polkadot/types/codec/Vec';
+import { TypeRegistry } from '@polkadot/types/create';
 import { Metadata } from '@polkadot/types/metadata';
 import algosdk from 'algosdk';
 import { ApiInitializer } from '../../configure/api-initializer.interface';
 import { SubqueryProject } from '../../configure/project.model';
 
 export class AlgorandApiInitializer implements ApiInitializer {
+  private registry = new TypeRegistry();
+
   async init(project: SubqueryProject): Promise<ApiPromise> {
     // configure for algorand
     const { network } = project;
 
-    const provider = new AlgorandProvider(network.endpoint);
+    const provider = new AlgorandProvider(this.registry, network.endpoint);
 
     const throwOnConnect = true;
 
@@ -31,24 +35,45 @@ export class AlgorandApiInitializer implements ApiInitializer {
 
     const retVal = await ApiPromise.create(apiOption);
 
+    // hack to get api.query.system.events to work properly
+    Object.defineProperty(retVal.query, 'system', {
+      writable: true,
+      value: {
+        events: {
+          at: (hash: any) =>
+            Promise.resolve(new Vec<any>(this.registry, 'Event', [])),
+        },
+      },
+    });
+
     return retVal;
   }
 }
 
 class AlgorandProvider implements ProviderInterface {
   hasSubscriptions = true;
-  registry = new TypeRegistry();
   isConnected: boolean;
   algorandApi: algosdk.Algodv2;
-  roundHahes: Record<string, number> = {};
+  hashToBlock: Record<string, any> = {};
+  lastRoundHash: Promise<any> = null;
+  lastHash: string = null;
 
-  constructor(endpoint: any) {
+  listeners: { [key: string]: ProviderInterfaceEmitCb[] } = {
+    connected: [],
+    disconnected: [],
+    error: [],
+  };
+
+  constructor(private registry: TypeRegistry, private endpoint: any) {
     const algodToken =
       'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
-    const algodServer = endpoint;
     const algodPort = 443;
 
-    this.algorandApi = new algosdk.Algodv2(algodToken, algodServer, algodPort);
+    this.algorandApi = new algosdk.Algodv2(
+      algodToken,
+      this.endpoint,
+      algodPort,
+    );
 
     this.isConnected = true;
   }
@@ -56,15 +81,24 @@ class AlgorandProvider implements ProviderInterface {
   clone(): ProviderInterface {
     return null;
   }
+
   async connect(): Promise<void> {
+    this.listeners.connected.forEach((listener) => listener());
+
     return Promise.resolve();
   }
   async disconnect(): Promise<void> {
+    this.isConnected = false;
+
+    this.listeners.disconnected.forEach((listener) => listener());
+
     return Promise.resolve();
   }
 
   on(type: ProviderInterfaceEmitted, sub: ProviderInterfaceEmitCb): () => void {
-    return () => console.log('Yep');
+    this.listeners[type].push(sub);
+
+    return () => sub();
   }
 
   async send<T = any>(
@@ -72,124 +106,149 @@ class AlgorandProvider implements ProviderInterface {
     params: unknown[],
     isCacheable?: boolean,
   ): Promise<T> {
-    switch (method) {
-      case "state_getRuntimeVersion":
-        const version = this.registry.createType('RuntimeVersion', { specVersion: 1 });
-        return Promise.resolve(version as any);
-
-      case "state_getMetadata":
-        const metadata = new Metadata(this.registry, {
-          magicNumber: 1635018093,
-          metadata: {
-            v14: {
-              lookup: {},
-              modules: [
-                  {
-                    name: "System",
-                    events: []
-                  },
-              ],
-            }
-          }
-        });
-
-        return Promise.resolve(metadata as any);
-
-      case "system_properties": {
-        const properties = this.registry.createType('ChainProperties', null);
-        return Promise.resolve(properties as any);
-      }
-
-      case "system_chain": {
-        const chain = this.registry.createType('Text', "Algorand");
-        return Promise.resolve(chain as any);
-      }
-
-      case "rpc_methods": {
-        const methods = this.registry.createType('RpcMethods');
-        return Promise.resolve(methods as any);
-      }
-
-      case "chain_getBlockHash": {
-        try {
-          const hash = await this.getBlockHash(params[0] as number);
-          return Promise.resolve(hash as any);
-        } catch (error) {
-          console.log(`Failed to retrieve block hash: ${error.message}`);
+    try {
+      switch (method) {
+        case 'state_getRuntimeVersion': {
+          const version = this.registry.createType('RuntimeVersion', {
+            specVersion: 1,
+          });
+          return Promise.resolve(version as any);
         }
-      }
 
-      case "chain_getFinalizedHead": {
-        const lastRound = await this.getLastRound();
-        const finalHash = await this.getBlockHash(lastRound);
-        return Promise.resolve(finalHash as any);
-      }
+        case 'state_getMetadata': {
+          const metadata = new Metadata(this.registry, {
+            magicNumber: 1635018093,
+            metadata: {
+              v14: {
+                lookup: {},
+                modules: [
+                  {
+                    name: 'system',
+                    events: [],
+                  },
+                ],
+              },
+            },
+          });
 
-      case "chain_getHeader": {
-        const blockN = await this.getBlockN(params);
-        const header = this.getHeader(blockN);
-        return Promise.resolve(header as any);
-      }
+          return Promise.resolve(metadata as any);
+        }
 
-      case "chain_getBlock": {
-        const blockN = await this.getBlockN(params);
-        const block = this.getBlock(blockN);
-        return Promise.resolve(block as any);
-      }
+        case 'system_properties': {
+          const properties = this.registry.createType('ChainProperties', null);
+          return Promise.resolve(properties as any);
+        }
 
-      case "system_health": {
-        // @TODO: Implement
-        return Promise.resolve<T>(null);
+        case 'system_chain': {
+          const chain = this.registry.createType('Text', 'Algorand');
+          return Promise.resolve(chain as any);
+        }
+
+        case 'rpc_methods': {
+          const methods = this.registry.createType('RpcMethods');
+
+          return Promise.resolve(methods as any);
+        }
+
+        case 'chain_getBlockHash': {
+          try {
+            console.log(`**chain_getBlockHash: ${params[0]}`);
+            const hash = await this.getBlockHash(params[0] as number);
+            return hash as any;
+          } catch (error) {
+            console.log(`Failed to retrieve block hash: ${error.message}`);
+            return Promise.resolve<T>(null);
+          }
+        }
+
+        case 'chain_getFinalizedHead': {
+          console.log('**chain_getFinalizedHead**');
+
+          this.lastRoundHash = this.getLastRound()
+            .then((lastRound) => this.getBlockHash(lastRound))
+            .then((hashValue) => {
+              if (this.lastHash) {
+                console.log(`Deleting last round hash ${this.lastHash}`);
+                // delete the reference to the old last has block
+                delete this.hashToBlock[this.lastHash];
+              }
+
+              this.lastHash = hashValue;
+
+              return this.lastHash;
+            });
+
+          return this.lastRoundHash;
+        }
+
+        case 'chain_getHeader': {
+          console.log(`**chain_getHeader: ${params}`);
+
+          const blockHash =
+            params.length > 0 ? params[0].toString() : await this.lastRoundHash;
+
+          const header = this.getHeader(blockHash);
+
+          return header as any;
+        }
+
+        case 'chain_getBlock': {
+          console.log(`chain_getBlock: ${params}`);
+
+          const block = this.getBlock(params[0].toString());
+
+          return block as any;
+        }
+
+        case 'system_health': {
+          // @TODO: Implement
+          return Promise.resolve<T>(null);
+        }
+
+        default:
+          return Promise.resolve<T>(null);
       }
+    } catch (error) {
+      console.log(`Error: ${error}`);
     }
-
-    return Promise.resolve<T>(null);
-  }
-
-  async getBlockN(params) {
-    let blockN: number;
-    if (params.length == 0) {
-      const lastRound = await this.getLastRound();
-      blockN = lastRound;
-    } else {
-      const hashStr = params[0] as string;
-      blockN = this.roundHahes[hashStr];
-      // @TODO: Check result and throw error ?
-
-      //delete this.roundHahes[hashStr];
-      //
-      // This code will be needed at some point otherwise the memory is going to
-      // explode. Better solution ?
-      // Time expiry ? Or delete with a way to recover... ?
-    }
-
-    return blockN;
   }
 
   async getLastRound() {
     const status = await this.algorandApi.status().do();
+
     const lastRound = status['last-round'];
+
     return lastRound;
   }
 
   async getBlockHash(n: number) {
+    assert(!(n === undefined || n === null), `Can't get block hash of ${n}`);
+
     const blockReq = this.algorandApi.block(n);
+
     const block = await blockReq.do();
 
     let blockHash = block?.cert?.prop?.dig;
-    if (blockHash == null) {
+
+    if (!blockHash) {
       blockHash = block.block.gh;
     }
 
-    const hash = this.registry.createType("Hash", blockHash);
+    const hash = this.registry.createType('Hash', blockHash);
+
     const hashStr = hash.toString();
-    this.roundHahes[hashStr] = n;
-    return hash;
+
+    this.hashToBlock[hashStr] = block;
+
+    console.log(`Blockhash for block ${n} = ${hashStr}`);
+
+    return hashStr;
   }
 
-  async getHeader(n: number) {
-    const blockReq = this.algorandApi.block(n);
-    const block = await blockReq.do();
+  getHeader(blockHash: string) {
+    assert(blockHash, `Can't get header of block ${blockHash}`);
+
+    const block = this.hashToBlock[blockHash];
 
     const header = this.registry.createType('Header', {
       digest: { logs: [] },
@@ -199,12 +258,21 @@ class AlgorandProvider implements ProviderInterface {
       cert: block.cert,
     });
 
+    console.log(`Parent hash for block ${blockHash} = ${header.parentHash}`);
+
     return header;
   }
 
-  async getBlock(n: number) {
-    const blockReq = this.algorandApi.block(n);
-    const block = await blockReq.do();
+  getBlock(blockHash: string) {
+    assert(blockHash, `Can't get block with number ${blockHash}`);
+
+    const block = this.hashToBlock[blockHash];
+
+    // delete the block from the cache if it is not the lastRoundHash
+    if (blockHash !== this.lastHash) {
+      console.log(`Deleting from cache: ${blockHash}`);
+      delete this.hashToBlock[blockHash];
+    }
 
     const subBlock = this.registry.createType('SignedBlock', {
       block: {
@@ -215,8 +283,8 @@ class AlgorandProvider implements ProviderInterface {
           block: block.block,
           cert: block.cert,
         },
-        extrinsics: []
-      }
+        extrinsics: [],
+      },
     });
 
     return subBlock;
