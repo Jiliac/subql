@@ -11,8 +11,18 @@ export async function getGenesisHash(endpoint: string): Promise<string> {
 }
 
 export async function getAlgorandGenesisHash(endpoint: string): Promise<string> {
-  const client = new SimpleHttpClient(endpoint);
-  const genesisBlock = await client.get<{block: {gh: string}}>('v2/blocks', ['0']);
+  // const algoSdk = createAlgoSdk(endpoint);
 
-  return genesisBlock.block.gh;
+  // const blockReq = algoSdk.block(1);
+
+  // const block = await blockReq.do();
+
+  // const hash = createHash('sha1', block.block.prev);
+
+  // return hash.toString();
+
+  const client = new SimpleHttpClient(endpoint);
+  const genesisBlock = await client.get<{block: {prev: string}}>('v2/blocks', ['1']);
+
+  return genesisBlock.block.prev;
 }

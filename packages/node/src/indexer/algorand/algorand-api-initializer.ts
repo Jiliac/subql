@@ -41,7 +41,11 @@ export class AlgorandApiInitializer implements ApiInitializer {
       value: {
         events: {
           at: (hash: any) =>
-            Promise.resolve(new Vec<any>(this.registry, 'Event', [])),
+            Promise.resolve(new Vec<any>(this.registry, 'EventRecord', [])),
+          range: (start: any, end: any) =>
+            Promise.resolve(
+              new Vec<any>(this.registry, 'FrameSystemEventRecord', []),
+            ),
         },
       },
     });
@@ -57,6 +61,18 @@ class AlgorandProvider implements ProviderInterface {
   hashToBlock: Record<string, any> = {};
   lastRoundHash: Promise<any> = null;
   lastHash: string = null;
+  messageRouter: Record<string, (params: unknown[]) => Promise<any>> = {
+    state_getRuntimeVersion: (params) => this.state_getRuntimeVersion(params),
+    state_getMetadata: (params) => this.state_getMetadata(params),
+    system_properties: (params) => this.system_properties(params),
+    system_chain: (params) => this.system_chain(params),
+    rpc_methods: (params) => this.rpc_methods(params),
+    chain_getBlockHash: (params) => this.chain_getBlockHash(params),
+    chain_getFinalizedHead: (params) => this.chain_getFinalizedHead(params),
+    chain_getHeader: (params) => this.chain_getHeader(params),
+    chain_getBlock: (params) => this.chain_getBlock(params),
+    system_health: (params) => this.system_health(params),
+  };
 
   listeners: { [key: string]: ProviderInterfaceEmitCb[] } = {
     connected: [],
@@ -106,114 +122,131 @@ class AlgorandProvider implements ProviderInterface {
     params: unknown[],
     isCacheable?: boolean,
   ): Promise<T> {
-    try {
-      switch (method) {
-        case 'state_getRuntimeVersion': {
-          const version = this.registry.createType('RuntimeVersion', {
-            specVersion: 1,
-          });
-          return Promise.resolve(version as any);
-        }
-
-        case 'state_getMetadata': {
-          const metadata = new Metadata(this.registry, {
-            magicNumber: 1635018093,
-            metadata: {
-              v14: {
-                lookup: {},
-                modules: [
-                  {
-                    name: 'system',
-                    events: [],
-                  },
-                ],
-              },
-            },
-          });
-
-          return Promise.resolve(metadata as any);
-        }
-
-        case 'system_properties': {
-          const properties = this.registry.createType('ChainProperties', null);
-          return Promise.resolve(properties as any);
-        }
-
-        case 'system_chain': {
-          const chain = this.registry.createType('Text', 'Algorand');
-          return Promise.resolve(chain as any);
-        }
-
-        case 'rpc_methods': {
-          const methods = this.registry.createType('RpcMethods');
-
-          return Promise.resolve(methods as any);
-        }
-
-        case 'chain_getBlockHash': {
-          try {
-            console.log(`**chain_getBlockHash: ${params[0]}`);
-            const hash = await this.getBlockHash(params[0] as number);
-            return hash as any;
-          } catch (error) {
-            console.log(`Failed to retrieve block hash: ${error.message}`);
-            return Promise.resolve<T>(null);
-          }
-        }
-
-        case 'chain_getFinalizedHead': {
-          console.log('**chain_getFinalizedHead**');
-
-          this.lastRoundHash = this.getLastRound()
-            .then((lastRound) => this.getBlockHash(lastRound))
-            .then((hashValue) => {
-              if (this.lastHash) {
-                console.log(`Deleting last round hash ${this.lastHash}`);
-                // delete the reference to the old last has block
-                delete this.hashToBlock[this.lastHash];
-              }
-
-              this.lastHash = hashValue;
-
-              return this.lastHash;
-            });
-
-          return this.lastRoundHash;
-        }
-
-        case 'chain_getHeader': {
-          console.log(`**chain_getHeader: ${params}`);
-
-          const blockHash =
-            params.length > 0 ? params[0].toString() : await this.lastRoundHash;
-
-          const header = this.getHeader(blockHash);
-
-          return header as any;
-        }
-
-        case 'chain_getBlock': {
-          console.log(`chain_getBlock: ${params}`);
-
-          const block = this.getBlock(params[0].toString());
-
-          return block as any;
-        }
-
-        case 'system_health': {
-          // @TODO: Implement
-          return Promise.resolve<T>(null);
-        }
-
-        default:
-          return Promise.resolve<T>(null);
+    if (method in this.messageRouter) {
+      try {
+        return this.messageRouter[method](params);
+      } catch (error) {
+        console.log(`Error: ${error}`);
       }
+    }
+
+    return Promise.resolve<T>(null);
+  }
+
+  async subscribe(
+    type: string,
+    method: string,
+    params: unknown[],
+    cb: ProviderInterfaceCallback,
+  ): Promise<string | number> {
+    return Promise.resolve('');
+  }
+
+  async unsubscribe(
+    type: string,
+    method: string,
+    id: string | number,
+  ): Promise<boolean> {
+    return Promise.resolve(false);
+  }
+
+  private async state_getRuntimeVersion(params: unknown[]) {
+    const version = this.registry.createType('RuntimeVersion', {
+      specVersion: 1,
+    });
+    return Promise.resolve(version as any);
+  }
+
+  private async state_getMetadata(params: unknown[]) {
+    const metadata = new Metadata(this.registry, {
+      magicNumber: 1635018093,
+      metadata: {
+        v14: {
+          lookup: {},
+          modules: [
+            {
+              name: 'system',
+              events: [],
+            },
+          ],
+        },
+      },
+    });
+
+    return Promise.resolve(metadata as any);
+  }
+
+  private async system_properties(params: unknown[]) {
+    const properties = this.registry.createType('ChainProperties', null);
+    return Promise.resolve(properties as any);
+  }
+
+  private async system_chain(params: unknown[]) {
+    const chain = this.registry.createType('Text', 'Algorand');
+    return Promise.resolve(chain as any);
+  }
+
+  private async rpc_methods(params: unknown[]) {
+    const methods = this.registry.createType('RpcMethods');
+
+    return Promise.resolve(methods as any);
+  }
+
+  private async chain_getBlockHash(params: unknown[]) {
+    try {
+      console.log(`**chain_getBlockHash: ${params[0]}`);
+      const hash = await this.getBlockHash(params[0] as number);
+      return hash as any;
     } catch (error) {
-      console.log(`Error: ${error}`);
+      console.log(`Failed to retrieve block hash: ${error.message}`);
+      return Promise.resolve(null);
     }
   }
 
-  async getLastRound() {
+  private async chain_getFinalizedHead(params: unknown[]) {
+    console.log('**chain_getFinalizedHead**');
+
+    this.lastRoundHash = this.getLastRound()
+      .then((lastRound) => this.getBlockHash(lastRound))
+      .then((hashValue) => {
+        if (this.lastHash) {
+          console.log(`Deleting last round hash ${this.lastHash}`);
+          // delete the reference to the old last has block
+          delete this.hashToBlock[this.lastHash];
+        }
+
+        this.lastHash = hashValue;
+
+        return this.lastHash;
+      });
+
+    return this.lastRoundHash;
+  }
+
+  private async chain_getHeader(params: unknown[]) {
+    console.log(`**chain_getHeader: ${params}`);
+
+    const blockHash =
+      params.length > 0 ? params[0].toString() : await this.lastRoundHash;
+
+    const header = this.getHeader(blockHash);
+
+    return header as any;
+  }
+
+  private async chain_getBlock(params: unknown[]) {
+    console.log(`chain_getBlock: ${params}`);
+
+    const block = this.getBlock(params[0].toString());
+
+    return Promise.resolve(block as any);
+  }
+
+  private async system_health(params: unknown[]) {
+    return Promise.resolve(null);
+  }
+
+  private async getLastRound() {
     const status = await this.algorandApi.status().do();
 
     const lastRound = status['last-round'];
@@ -221,7 +254,7 @@ class AlgorandProvider implements ProviderInterface {
     return lastRound;
   }
 
-  async getBlockHash(n: number) {
+  private async getBlockHash(n: number) {
     assert(!(n === undefined || n === null), `Can't get block hash of ${n}`);
 
     const blockReq = this.algorandApi.block(n);
@@ -245,20 +278,25 @@ class AlgorandProvider implements ProviderInterface {
     return hashStr;
   }
 
-  async getFirstBlockHash() {
+  private async getFirstBlockHash() {
     const blockReq = this.algorandApi.block(1);
 
     const block = await blockReq.do();
 
-    let blockHash = block.block.prev;
-
-    return blockHash;
+    return block.block.prev;
   }
 
-  getHeader(blockHash: string) {
+  private getHeader(blockHash: string) {
     assert(blockHash, `Can't get header of block ${blockHash}`);
-
+    assert(
+      blockHash in this.hashToBlock,
+      `Missing block in cache: ${blockHash}`,
+    );
     const block = this.hashToBlock[blockHash];
+
+    if (!block) {
+      return null;
+    }
 
     const header = this.registry.createType('Header', {
       digest: { logs: [] },
@@ -273,10 +311,18 @@ class AlgorandProvider implements ProviderInterface {
     return header;
   }
 
-  getBlock(blockHash: string) {
+  private getBlock(blockHash: string) {
     assert(blockHash, `Can't get block with number ${blockHash}`);
+    assert(
+      blockHash in this.hashToBlock,
+      `Can't find block in hash: ${blockHash}`,
+    );
 
     const block = this.hashToBlock[blockHash];
+
+    if (!block) {
+      return null;
+    }
 
     // delete the block from the cache if it is not the lastRoundHash
     if (blockHash !== this.lastHash) {
@@ -298,22 +344,5 @@ class AlgorandProvider implements ProviderInterface {
     });
 
     return subBlock;
-  }
-
-  async subscribe(
-    type: string,
-    method: string,
-    params: unknown[],
-    cb: ProviderInterfaceCallback,
-  ): Promise<string | number> {
-    return Promise.resolve('');
-  }
-
-  async unsubscribe(
-    type: string,
-    method: string,
-    id: string | number,
-  ): Promise<boolean> {
-    return Promise.resolve(false);
   }
 }
