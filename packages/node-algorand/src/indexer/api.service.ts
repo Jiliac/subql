@@ -85,24 +85,6 @@ export class ApiService implements OnApplicationShutdown {
     return this.api;
   }
 
-  async getPatchedApi(
-    blockHash: string | BlockHash,
-    parentBlockHash?: string | BlockHash,
-  ): Promise<ApiAt> {
-    this.currentBlockHash = blockHash.toString();
-    if (parentBlockHash) {
-      this.currentRuntimeVersion = await this.api.rpc.state.getRuntimeVersion(
-        parentBlockHash,
-      );
-    }
-    const apiAt = (await this.api.at(
-      blockHash,
-      this.currentRuntimeVersion,
-    )) as ApiAt;
-    this.patchApiRpc(this.api, apiAt);
-    return apiAt;
-  }
-
   private redecorateRpcFunction<T extends 'promise' | 'rxjs'>(
     original: RpcMethodResult<T, AnyFunction>,
   ): RpcMethodResult<T, AnyFunction> {
@@ -128,18 +110,5 @@ export class ApiService implements OnApplicationShutdown {
     ret.raw = NOT_SUPPORT('api.rpc.*.*.raw');
     ret.meta = original.meta;
     return ret;
-  }
-
-  private patchApiRpc(api: ApiPromise, apiAt: ApiAt): void {
-    apiAt.rpc = Object.entries(api.rpc).reduce((acc, [module, rpcMethods]) => {
-      acc[module] = Object.entries(rpcMethods).reduce(
-        (accInner, [name, rpcPromiseResult]) => {
-          accInner[name] = this.redecorateRpcFunction(rpcPromiseResult);
-          return accInner;
-        },
-        {},
-      );
-      return acc;
-    }, {} as ApiPromise['rpc']);
   }
 }

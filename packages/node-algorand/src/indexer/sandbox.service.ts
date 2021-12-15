@@ -112,13 +112,12 @@ export class SandboxService {
     private readonly project: SubqueryProject,
   ) {}
 
-  getDsProcessor(ds: SubqlDatasource, api: ApiAt): IndexerSandbox {
+  getDsProcessor(ds: SubqlDatasource): IndexerSandbox {
     const entry = this.getDataSourceEntry(ds);
     let processor = this.processorCache[entry];
     if (!processor) {
       processor = new IndexerSandbox(
         {
-          // api: await this.apiService.getPatchedApi(),
           entry,
           root: this.project.path,
           store: this.storeService.getStore(),
@@ -127,7 +126,6 @@ export class SandboxService {
       );
       this.processorCache[entry] = processor;
     }
-    processor.freeze(api, 'api');
     if (argv.unsafe) {
       processor.freeze(this.apiService.getApi(), 'unsafeApi');
     }
