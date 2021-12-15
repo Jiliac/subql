@@ -145,7 +145,7 @@ export class FetchService implements OnApplicationShutdown {
   }
 
   get api(): ApiPromise {
-    return this.apiService.getApi();
+    return null;
   }
 
   // TODO: if custom ds doesn't support dictionary, use baseFilter, if yes, let

@@ -25,6 +25,7 @@ import {
   SubqlNetworkFilter,
   SubqlRuntimeHandler,
 } from '@subql/types';
+import algosdk from 'algosdk';
 import { QueryTypes, Sequelize } from 'sequelize';
 import { NodeConfig } from '../configure/NodeConfig';
 import { SubqueryProject } from '../configure/project.model';
@@ -55,7 +56,7 @@ const { argv } = getYargsOption();
 
 @Injectable()
 export class IndexerManager {
-  private api: ApiPromise;
+  private api: algosdk.Algodv2;
   private prevSpecVersion?: number;
   private filteredDataSources: SubqlDatasource[];
   protected metadataRepo: MetadataRepo;
@@ -286,11 +287,6 @@ export class IndexerManager {
       where: { name: this.nodeConfig.subqueryName },
     });
 
-    this.eventEmitter.emit(
-      IndexerEvent.NetworkMetadata,
-      this.apiService.networkMeta,
-    );
-
     const keys = [
       'lastProcessedHeight',
       'blockOffset',
@@ -311,7 +307,9 @@ export class IndexerManager {
       return arr;
     }, {} as { [key in typeof keys[number]]: string | boolean | number });
 
-    const { chain, genesisHash, specName } = this.apiService.networkMeta;
+    const chain = this.apiService.chain;
+    const genesisHash = this.apiService.genesisHash;
+    const specName = this.apiService.specName;
 
     // blockOffset and genesisHash should only have been created once, never updated.
     // If blockOffset is changed, will require re-index and re-sync poi.
@@ -353,7 +351,7 @@ export class IndexerManager {
     let filteredDs = this.getDataSourcesForSpecName();
     if (filteredDs.length === 0) {
       logger.error(
-        `Did not find any dataSource match with network specName ${this.api.runtimeVersion.specName}`,
+        `Did not find any dataSource match with network specName`,
       );
       process.exit(1);
     }
@@ -370,7 +368,7 @@ export class IndexerManager {
       if (isCustomDs(ds)) {
         return this.dsProcessorService
           .getDsProcessor(ds)
-          .dsFilterProcessor(ds, this.api);
+          .dsFilterProcessor(ds, null);
       } else {
         return true;
       }
@@ -401,7 +399,7 @@ export class IndexerManager {
     return this.project.dataSources.filter(
       (ds) =>
         !ds.filter?.specName ||
-        ds.filter.specName === this.api.runtimeVersion.specName.toString(),
+        ds.filter.specName === this.apiService.specName,
     );
   }
 
@@ -458,7 +456,7 @@ export class IndexerManager {
       const transformedData = await Promise.all(
         filteredData
           .filter((data) => processor.filterProcessor(handler.filter, data, ds))
-          .map((data) => processor.transformer(data, ds, this.api, assets)),
+          .map((data) => processor.transformer(data, ds, null, assets)),
       );
 
       for (const data of transformedData) {

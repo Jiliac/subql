@@ -7,10 +7,10 @@ import { ApiPromise, HttpProvider, WsProvider } from '@polkadot/api';
 import { ApiOptions, RpcMethodResult } from '@polkadot/api/types';
 import { BlockHash, RuntimeVersion } from '@polkadot/types/interfaces';
 import { AnyFunction } from '@polkadot/types/types';
+import algosdk from 'algosdk';
 import { SubqueryProject } from '../configure/project.model';
 import { getLogger } from '../utils/logger';
 import { IndexerEvent, NetworkMetadataPayload } from './events';
-import { ApiAt } from './types';
 
 const NOT_SUPPORT = (name: string) => () => {
   throw new Error(`${name}() is not supported`);
@@ -20,11 +20,13 @@ const logger = getLogger('api');
 
 @Injectable()
 export class ApiService implements OnApplicationShutdown {
-  private api: ApiPromise;
+  private api: algosdk.Algodv2;
   private currentBlockHash: string;
   private currentRuntimeVersion: RuntimeVersion;
-  private apiOption: ApiOptions;
-  networkMeta: NetworkMetadataPayload;
+
+  genesisHash;
+  chain = 'algorand';
+  specName = 'mainnet-1.0';
 
   constructor(
     protected project: SubqueryProject,
@@ -32,47 +34,28 @@ export class ApiService implements OnApplicationShutdown {
   ) {}
 
   async onApplicationShutdown(): Promise<void> {
-    await Promise.all([this.api?.disconnect()]);
+    await Promise.resolve();
   }
 
   async init(): Promise<ApiService> {
-    const { chainTypes, network } = this.project;
-    let provider: WsProvider | HttpProvider;
-    let throwOnConnect = false;
-    if (network.endpoint.startsWith('ws')) {
-      provider = new WsProvider(network.endpoint);
-    } else if (network.endpoint.startsWith('http')) {
-      provider = new HttpProvider(network.endpoint);
-      throwOnConnect = true;
-    }
+    const algodToken = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    const algodPort = 443;
+    const { network } = this.project;
 
-    this.apiOption = {
-      provider,
-      throwOnConnect,
-      ...chainTypes,
-    };
-    this.api = await ApiPromise.create(this.apiOption);
+    this.api = new algosdk.Algodv2(
+        algodToken,
+        network.endpoint,
+        algodPort,
+    );
 
-    this.eventEmitter.emit(IndexerEvent.ApiConnected, { value: 1 });
-    this.api.on('connected', () => {
-      this.eventEmitter.emit(IndexerEvent.ApiConnected, { value: 1 });
-    });
-    this.api.on('disconnected', () => {
-      this.eventEmitter.emit(IndexerEvent.ApiConnected, { value: 0 });
-    });
-
-    this.networkMeta = {
-      chain: this.api.runtimeChain.toString(),
-      specName: this.api.runtimeVersion.specName.toString(),
-      genesisHash: this.api.genesisHash.toString(),
-    };
+    this.genesisHash = await this.getFirstBlockHash()
 
     if (
       network.genesisHash &&
-      network.genesisHash !== this.networkMeta.genesisHash
+      network.genesisHash !== this.genesisHash
     ) {
       const err = new Error(
-        `Network genesisHash doesn't match expected genesisHash. expected="${network.genesisHash}" actual="${this.networkMeta.genesisHash}`,
+        `Network genesisHash doesn't match expected genesisHash. expected="${network.genesisHash}" actual="${this.genesisHash}`,
       );
       logger.error(err, err.message);
       throw err;
@@ -81,7 +64,7 @@ export class ApiService implements OnApplicationShutdown {
     return this;
   }
 
-  getApi(): ApiPromise {
+  getApi(): algosdk.Algodv2 {
     return this.api;
   }
 
@@ -110,5 +93,13 @@ export class ApiService implements OnApplicationShutdown {
     ret.raw = NOT_SUPPORT('api.rpc.*.*.raw');
     ret.meta = original.meta;
     return ret;
+  }
+
+  private async getFirstBlockHash() {
+    const blockReq = this.api.block(1);
+
+    const block = await blockReq.do();
+
+    return block.block.prev;
   }
 }
