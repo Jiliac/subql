@@ -36,8 +36,9 @@ export class ApiService implements OnApplicationShutdown {
   private currentRuntimeVersion: RuntimeVersion;
 
   genesisHash;
-  chain = 'algorand';
-  specName = 'mainnet-1.0';
+  chain: string = 'algorand';
+  specName: string = 'mainnet-1.0';
+  specVersion: number = 1;
 
   constructor(
     protected project: SubqueryProject,

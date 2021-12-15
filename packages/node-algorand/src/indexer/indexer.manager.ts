@@ -20,6 +20,8 @@ import {
   SubqlCustomDatasource,
   SubqlCustomHandler,
   SubqlDatasource,
+  AlgoHandlerKind,
+  AlgoRuntimeHandler,
   SubqlHandlerKind,
   SubqlNetworkFilter,
   SubqlRuntimeHandler,
@@ -128,8 +130,8 @@ export class IndexerManager {
       throw e;
     }
     await tx.commit();
-    this.fetchService.latestProcessed(block.block.header.number.toNumber());
-    this.prevSpecVersion = block.specVersion;
+    this.fetchService.latestProcessed(blockHeight);
+    this.prevSpecVersion = this.apiService.specVersion;
     if (this.nodeConfig.proofOfIndex) {
       this.poiService.setLatestPoiBlockHash(poiBlockHash);
     }
@@ -400,36 +402,24 @@ export class IndexerManager {
 
   private async indexBlockForRuntimeDs(
     vm: IndexerSandbox,
-    handlers: SubqlRuntimeHandler[],
+    handlers: AlgoRuntimeHandler[],
     { header }: AlgorandBlock,
   ): Promise<void> {
     for (const handler of handlers) {
       switch (handler.kind) {
-        case SubqlHandlerKind.Block:
-          if (SubstrateUtil.filterBlock(block, handler.filter)) {
-            await vm.securedExec(handler.handler, [block]);
-          }
+        case AlgoHandlerKind.Header:
+          await vm.securedExec(handler.handler, [header]);
           break;
-        case SubqlHandlerKind.Call: {
-          const filteredExtrinsics = SubstrateUtil.filterExtrinsics(
-            extrinsics,
-            handler.filter,
-          );
-          for (const e of filteredExtrinsics) {
-            await vm.securedExec(handler.handler, [e]);
-          }
-          break;
-        }
-        case SubqlHandlerKind.Event: {
-          const filteredEvents = SubstrateUtil.filterEvents(
-            events,
-            handler.filter,
-          );
-          for (const e of filteredEvents) {
-            await vm.securedExec(handler.handler, [e]);
-          }
-          break;
-        }
+        //case SubqlHandlerKind.Event: {
+        //  const filteredEvents = SubstrateUtil.filterEvents(
+        //    events,
+        //    handler.filter,
+        //  );
+        //  for (const e of filteredEvents) {
+        //    await vm.securedExec(handler.handler, [e]);
+        //  }
+        //  break;
+        //}
         default:
       }
     }

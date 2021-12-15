@@ -5,6 +5,19 @@ import {ApiPromise} from '@polkadot/api';
 import {RegistryTypes} from '@polkadot/types/types';
 import {SubstrateBlock, SubstrateEvent, SubstrateExtrinsic} from './interfaces';
 
+export enum AlgoHandlerKind {
+  Header = 'algorand/HeaderHandler'
+}
+
+export interface AlgoHeaderHandler {
+  handler: string;
+  kind: AlgoHandlerKind.Header;
+}
+
+export type AlgoRuntimeHandler = AlgoHeaderHandler;
+
+// ********************************
+
 export enum SubqlDatasourceKind {
   Runtime = 'substrate/Runtime',
 }
