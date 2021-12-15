@@ -11,6 +11,7 @@ import {
   SubqlNetworkFilter,
   SubqlRuntimeDatasource,
   SubqlRuntimeHandler,
+  AlgoDatasource,
 } from '@subql/types';
 import {IProjectManifest} from '../../types';
 
@@ -43,6 +44,7 @@ export interface ProjectManifestV0_2_1 extends IProjectManifest {
   };
 
   dataSources: (RuntimeDataSourceV0_2_1 | CustomDatasourceV0_2_1)[];
+  algoDS: AlgoDatasource;
 }
 
 export function isRuntimeDataSourceV0_2_1(dataSource: SubqlDatasource): dataSource is RuntimeDataSourceV0_2_1 {

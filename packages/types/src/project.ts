@@ -9,12 +9,36 @@ export enum AlgoHandlerKind {
   Header = 'algorand/HeaderHandler'
 }
 
+export enum AlgoDatasourceKind {
+  Runtime = 'algorand/Runtime',
+}
+
 export interface AlgoHeaderHandler {
   handler: string;
   kind: AlgoHandlerKind.Header;
 }
 
 export type AlgoRuntimeHandler = AlgoHeaderHandler;
+
+export type AlgoHandler = AlgoRuntimeHandler; // or custom handler ?
+
+export interface AlgoMapping<T extends AlgoHandler = AlgoHandler> {
+  handlers: T[];
+}
+
+interface IAlgoDatasource<M extends AlgoMapping> {
+  name?: string;
+  kind: string;
+  startBlock?: number;
+  mapping: M;
+}
+
+export interface AlgoRuntimeDatasource<M extends AlgoMapping<AlgoRuntimeHandler> = AlgoMapping<AlgoRuntimeHandler>>
+  extends IAlgoDatasource<M> {
+  kind: AlgoDatasourceKind.Runtime
+};
+
+export type AlgoDatasource = AlgoRuntimeDatasource ; //| AlgoCustomDatasource;
 
 // ********************************
 
@@ -53,6 +77,7 @@ export interface ProjectManifest {
   };
 
   dataSources: SubqlDatasource[];
+  algoDS: AlgoDatasource[];
 }
 
 // [startSpecVersion?, endSpecVersion?] closed range

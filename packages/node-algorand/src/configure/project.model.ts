@@ -13,7 +13,7 @@ import {
   manifestIsV0_2_1,
   loadFromJsonOrYaml,
 } from '@subql/common';
-import { SubqlDatasource } from '@subql/types';
+import { AlgoDatasource, SubqlDatasource } from '@subql/types';
 import { pick } from 'lodash';
 import { getLogger } from '../utils/logger';
 import { prepareProjectDir } from '../utils/project';
@@ -88,6 +88,9 @@ export class SubqueryProject {
   }
   get dataSources(): SubqlDatasource[] {
     return this._projectManifest.dataSources;
+  }
+  get algoDS(): AlgoDatasource[]{
+    return this._projectManifest.algoDS;
   }
   get schema(): string {
     return this._projectManifest.schema;

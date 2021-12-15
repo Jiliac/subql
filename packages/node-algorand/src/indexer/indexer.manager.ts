@@ -11,15 +11,13 @@ import {
   isBlockHandlerProcessor,
   isCallHandlerProcessor,
   isEventHandlerProcessor,
-  isCustomDs,
-  isRuntimeDs,
 } from '@subql/common';
 import {
   RuntimeHandlerInputMap,
   SecondLayerHandlerProcessor,
   SubqlCustomDatasource,
   SubqlCustomHandler,
-  SubqlDatasource,
+  AlgoDatasource,
   AlgoHandlerKind,
   AlgoRuntimeHandler,
   SubqlHandlerKind,
@@ -59,7 +57,7 @@ const { argv } = getYargsOption();
 export class IndexerManager {
   private api: algosdk.Algodv2;
   private prevSpecVersion?: number;
-  private filteredDataSources: SubqlDatasource[];
+  private filteredDataSources: AlgoDatasource[];
   protected metadataRepo: MetadataRepo;
 
   constructor(
@@ -91,15 +89,11 @@ export class IndexerManager {
     try {
       for (const ds of this.filteredDataSources) {
         const vm = this.sandboxService.getDsProcessor(ds);
-        if (isRuntimeDs(ds)) {
-          await this.indexBlockForRuntimeDs(
-            vm,
-            ds.mapping.handlers,
-            blockContent,
-          );
-        } else if (isCustomDs(ds)) {
-          await this.indexBlockForCustomDs(ds, vm, blockContent);
-        }
+        await this.indexBlockForRuntimeDs(
+          vm,
+          ds.mapping.handlers,
+          blockContent,
+        );
       }
 
       await this.metadataRepo.upsert(
@@ -347,7 +341,7 @@ export class IndexerManager {
     return metadataRepo;
   }
 
-  private filterDataSources(processedHeight: number): SubqlDatasource[] {
+  private filterDataSources(processedHeight: number): AlgoDatasource[] {
     let filteredDs = this.getDataSourcesForSpecName();
     if (filteredDs.length === 0) {
       logger.error(`Did not find any dataSource match with network specName`);
@@ -361,16 +355,6 @@ export class IndexerManager {
       );
       process.exit(1);
     }
-    // perform filter for custom ds
-    filteredDs = filteredDs.filter((ds) => {
-      if (isCustomDs(ds)) {
-        return this.dsProcessorService
-          .getDsProcessor(ds)
-          .dsFilterProcessor(ds, null);
-      } else {
-        return true;
-      }
-    });
 
     if (!filteredDs.length) {
       logger.error(`Did not find any datasources with associated processor`);
@@ -393,11 +377,8 @@ export class IndexerManager {
     }
   }
 
-  private getDataSourcesForSpecName(): SubqlDatasource[] {
-    return this.project.dataSources.filter(
-      (ds) =>
-        !ds.filter?.specName || ds.filter.specName === this.apiService.specName,
-    );
+  private getDataSourcesForSpecName(): AlgoDatasource[] {
+    return this.project.dataSources()
   }
 
   private async indexBlockForRuntimeDs(
@@ -421,50 +402,6 @@ export class IndexerManager {
         //  break;
         //}
         default:
-      }
-    }
-  }
-
-  private async indexBlockForCustomDs(
-    ds: SubqlCustomDatasource<string, SubqlNetworkFilter>,
-    vm: IndexerSandbox,
-    { header }: AlgorandBlock,
-  ): Promise<void> {
-    const plugin = this.dsProcessorService.getDsProcessor(ds);
-    const assets = await this.dsProcessorService.getAssets(ds);
-
-    const processData = async <K extends SubqlHandlerKind>(
-      processor: SecondLayerHandlerProcessor<K, unknown, unknown>,
-      handler: SubqlCustomHandler<string, Record<string, unknown>>,
-      filteredData: RuntimeHandlerInputMap[K][],
-    ): Promise<void> => {
-      const transformedData = await Promise.all(
-        filteredData
-          .filter((data) => processor.filterProcessor(handler.filter, data, ds))
-          .map((data) => processor.transformer(data, ds, null, assets)),
-      );
-
-      for (const data of transformedData) {
-        await vm.securedExec(handler.handler, [data]);
-      }
-    };
-
-    for (const handler of ds.mapping.handlers) {
-      const processor = plugin.handlerProcessors[handler.kind];
-      if (isBlockHandlerProcessor(processor)) {
-        await processData(processor, handler, [block]);
-      } else if (isCallHandlerProcessor(processor)) {
-        const filteredExtrinsics = SubstrateUtil.filterExtrinsics(
-          extrinsics,
-          processor.baseFilter,
-        );
-        await processData(processor, handler, filteredExtrinsics);
-      } else if (isEventHandlerProcessor(processor)) {
-        const filteredEvents = SubstrateUtil.filterEvents(
-          events,
-          processor.baseFilter,
-        );
-        await processData(processor, handler, filteredEvents);
       }
     }
   }

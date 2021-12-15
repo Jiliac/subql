@@ -4,7 +4,7 @@
 import path from 'path';
 import { Injectable } from '@nestjs/common';
 import { isRuntimeDataSourceV0_2_0, levelFilter } from '@subql/common';
-import { Store, SubqlDatasource } from '@subql/types';
+import { Store, AlgoDatasource } from '@subql/types';
 import { NodeVM, NodeVMOptions, VMScript } from '@subql/x-vm2';
 import { merge } from 'lodash';
 import { NodeConfig } from '../configure/NodeConfig';
@@ -112,7 +112,7 @@ export class SandboxService {
     private readonly project: SubqueryProject,
   ) {}
 
-  getDsProcessor(ds: SubqlDatasource): IndexerSandbox {
+  getDsProcessor(ds: AlgoDatasource): IndexerSandbox {
     const entry = this.getDataSourceEntry(ds);
     let processor = this.processorCache[entry];
     if (!processor) {
@@ -132,11 +132,7 @@ export class SandboxService {
     return processor;
   }
 
-  private getDataSourceEntry(ds: SubqlDatasource): string {
-    if (isRuntimeDataSourceV0_2_0(ds)) {
-      return ds.mapping.file;
-    } else {
-      return getProjectEntry(this.project.path);
-    }
+  private getDataSourceEntry(ds: AlgoDatasource): string {
+    return ds.mapping.file;
   }
 }
