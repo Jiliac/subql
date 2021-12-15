@@ -5,7 +5,6 @@ import { Module } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { SubqueryProject } from '../configure/project.model';
 import { DbModule } from '../db/db.module';
-import { AlgorandApiInitializer } from './algorand/algorand-api-initializer';
 import { ApiService } from './api.service';
 import { BenchmarkService } from './benchmark.service';
 import { DictionaryService } from './dictionary.service';
@@ -14,23 +13,8 @@ import { FetchService } from './fetch.service';
 import { IndexerManager } from './indexer.manager';
 import { MmrService } from './mmr.service';
 import { PoiService } from './poi.service';
-import { PolkadotApiInitializer } from './polkadot/polkadot-api-initializer';
 import { SandboxService } from './sandbox.service';
 import { StoreService } from './store.service';
-
-function apiServiceFactory(
-  project: SubqueryProject,
-  eventEmitter: EventEmitter2,
-) {
-  if (
-    project.projectManifest.isV0_2_1 &&
-    project.projectManifest.asV0_2_1.network.blockchainType === 'algorand'
-  ) {
-    return new ApiService(project, eventEmitter, new AlgorandApiInitializer());
-  }
-
-  return new ApiService(project, eventEmitter, new PolkadotApiInitializer());
-}
 
 @Module({
   imports: [DbModule.forFeature(['Subquery'])],
@@ -43,7 +27,7 @@ function apiServiceFactory(
         project: SubqueryProject,
         eventEmitter: EventEmitter2,
       ) => {
-        const apiService = apiServiceFactory(project, eventEmitter);
+        const apiService = new ApiService(project, eventEmitter);
         await apiService.init();
         return apiService;
       },

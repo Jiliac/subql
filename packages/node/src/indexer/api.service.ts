@@ -3,11 +3,10 @@
 
 import { Injectable, OnApplicationShutdown } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { ApiPromise } from '@polkadot/api';
-import { RpcMethodResult } from '@polkadot/api/types';
+import { ApiPromise, HttpProvider, WsProvider } from '@polkadot/api';
+import { ApiOptions, RpcMethodResult } from '@polkadot/api/types';
 import { BlockHash, RuntimeVersion } from '@polkadot/types/interfaces';
 import { AnyFunction } from '@polkadot/types/types';
-import { ApiInitializer } from '../configure/api-initializer.interface';
 import { SubqueryProject } from '../configure/project.model';
 import { getLogger } from '../utils/logger';
 import { IndexerEvent, NetworkMetadataPayload } from './events';
@@ -24,12 +23,12 @@ export class ApiService implements OnApplicationShutdown {
   private api: ApiPromise;
   private currentBlockHash: string;
   private currentRuntimeVersion: RuntimeVersion;
+  private apiOption: ApiOptions;
   networkMeta: NetworkMetadataPayload;
 
   constructor(
     protected project: SubqueryProject,
     private eventEmitter: EventEmitter2,
-    private initializer: ApiInitializer,
   ) {}
 
   async onApplicationShutdown(): Promise<void> {
@@ -37,9 +36,22 @@ export class ApiService implements OnApplicationShutdown {
   }
 
   async init(): Promise<ApiService> {
-    const network = this.project.network;
+    const { chainTypes, network } = this.project;
+    let provider: WsProvider | HttpProvider;
+    let throwOnConnect = false;
+    if (network.endpoint.startsWith('ws')) {
+      provider = new WsProvider(network.endpoint);
+    } else if (network.endpoint.startsWith('http')) {
+      provider = new HttpProvider(network.endpoint);
+      throwOnConnect = true;
+    }
 
-    this.api = await this.initializer.init(this.project);
+    this.apiOption = {
+      provider,
+      throwOnConnect,
+      ...chainTypes,
+    };
+    this.api = await ApiPromise.create(this.apiOption);
 
     this.eventEmitter.emit(IndexerEvent.ApiConnected, { value: 1 });
     this.api.on('connected', () => {

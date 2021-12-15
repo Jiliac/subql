@@ -16,7 +16,6 @@ import { FetchService } from './fetch.service';
 import { IndexerManager } from './indexer.manager';
 import { MmrService } from './mmr.service';
 import { PoiService } from './poi.service';
-import { PolkadotApiInitializer } from './polkadot/polkadot-api-initializer';
 import { SandboxService } from './sandbox.service';
 import { StoreService } from './store.service';
 
@@ -137,11 +136,7 @@ function createIndexerManager(project: SubqueryProject): IndexerManager {
   const sequilize = new Sequelize();
   const eventEmitter = new EventEmitter2();
 
-  const apiService = new ApiService(
-    project,
-    eventEmitter,
-    new PolkadotApiInitializer(),
-  );
+  const apiService = new ApiService(project, eventEmitter);
   const dictionaryService = new DictionaryService(project);
 
   const dsPluginService = new DsProcessorService(project);

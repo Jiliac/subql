@@ -104,10 +104,7 @@ export class DictionaryService implements OnApplicationShutdown {
   constructor(protected project: SubqueryProject) {
     this.client = new ApolloClient({
       cache: new InMemoryCache({ resultCaching: true }),
-      link: new HttpLink({
-        uri: this.project.network.dictionary,
-        fetch: fetch as any,
-      }),
+      link: new HttpLink({ uri: this.project.network.dictionary, fetch }),
       defaultOptions: {
         watchQuery: {
           fetchPolicy: 'no-cache',

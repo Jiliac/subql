@@ -25,25 +25,5 @@ export DB_PORT=5432
 
 ## Run the node
 ```bash
-../packages/node/bin/run -f .
+../packages/node/bin/run -f . --local
 ```
-
-## Notes:
-
-### Methods invoked:
-- `chain_getBlockHash`
-- `chain_getFinalizedHead`
-- `chain_getHeader`
-- `chain_getBlock`
-
-- `state_getRuntimeVersion`
-- `system_chain`
-- `system_properties`
-- `rpc_methods`
-- `state_getMetadata`
-- `system_health`
-
-### Event subscriptions:
-- `connected`
-- `disconnected`
-- `error`

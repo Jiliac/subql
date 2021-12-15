@@ -80,7 +80,7 @@ export class ConfigureModule {
     } else {
       if (!argv.subquery) {
         logger.error(
-          'Subquery path is missing either in cli options nor in config file',
+          'Subquery path is missing neither in cli options nor in config file',
         );
         yargsOptions.showHelp();
         process.exit(1);
