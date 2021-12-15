@@ -10,6 +10,15 @@ import {
   SubstrateExtrinsic,
 } from '@subql/types';
 
+export type AlgorandBlock = {
+  header: AlgoHeader;
+};
+
+export type AlgoHeader = {
+  hash: Uint8Array;
+  round: number;
+};
+
 export interface BlockContent {
   block: SubstrateBlock;
   extrinsics: SubstrateExtrinsic[];

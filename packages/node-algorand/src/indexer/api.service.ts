@@ -4,20 +4,30 @@
 import { assert } from 'console';
 import { Injectable, OnApplicationShutdown } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { HttpProvider, WsProvider } from '@polkadot/api';
-import { ApiOptions, RpcMethodResult } from '@polkadot/api/types';
-import { BlockHash, RuntimeVersion } from '@polkadot/types/interfaces';
+import { RpcMethodResult } from '@polkadot/api/types';
+import { RuntimeVersion } from '@polkadot/types/interfaces';
 import { AnyFunction } from '@polkadot/types/types';
 import algosdk from 'algosdk';
 import { SubqueryProject } from '../configure/project.model';
 import { getLogger } from '../utils/logger';
-import { IndexerEvent, NetworkMetadataPayload } from './events';
+import { AlgorandBlock } from './types';
 
 const NOT_SUPPORT = (name: string) => () => {
   throw new Error(`${name}() is not supported`);
 };
 
 const logger = getLogger('api');
+
+function toHexString(byteArray: Uint8Array) {
+  if (byteArray === null) {
+    return byteArray;
+  }
+  let s = '0x';
+  byteArray.forEach(function (byte: number) {
+    s += `0${(byte & 0xff).toString(16)}`.slice(-2);
+  });
+  return s;
+}
 
 @Injectable()
 export class ApiService implements OnApplicationShutdown {
@@ -46,7 +56,7 @@ export class ApiService implements OnApplicationShutdown {
 
     this.api = new algosdk.Algodv2(algodToken, network.endpoint, algodPort);
 
-    this.genesisHash = await this.getFirstBlockHash();
+    this.genesisHash = toHexString(await this.getFirstBlockHash());
 
     if (network.genesisHash && network.genesisHash !== this.genesisHash) {
       const err = new Error(
@@ -104,12 +114,24 @@ export class ApiService implements OnApplicationShutdown {
     return Promise.resolve(lastRound);
   }
 
-  private async getBlock(n: number) {
+  async getBlock(n: number): Promise<AlgorandBlock> {
     assert(!(n === undefined || n === null), `Can't get block hash of ${n}`);
 
     const blockReq = this.api.block(n);
-    const block = await blockReq.do();
+    const rawBlock = await blockReq.do();
 
-    return block;
+    let blockHash = rawBlock?.cert?.prop?.dig;
+    if (!blockHash) {
+      blockHash = await this.getFirstBlockHash();
+    }
+
+    const block = {
+      header: {
+        hash: blockHash,
+        round: rawBlock.block.round,
+      },
+    };
+
+    return Promise.resolve(block);
   }
 }

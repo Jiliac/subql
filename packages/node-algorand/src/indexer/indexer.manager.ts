@@ -43,7 +43,7 @@ import { PoiService } from './poi.service';
 import { PoiBlock } from './PoiBlock';
 import { IndexerSandbox, SandboxService } from './sandbox.service';
 import { StoreService } from './store.service';
-import { BlockContent } from './types';
+import { AlgorandBlock } from './types';
 
 const { version: packageVersion } = require('../../package.json');
 
@@ -76,9 +76,8 @@ export class IndexerManager {
   ) {}
 
   @profiler(argv.profiler)
-  async indexBlock(blockContent: BlockContent): Promise<void> {
-    const { block } = blockContent;
-    const blockHeight = block.block.header.number.toNumber();
+  async indexBlock(blockContent: AlgorandBlock): Promise<void> {
+    const blockHeight = blockContent.header.round;
     this.eventEmitter.emit(IndexerEvent.BlockProcessing, {
       height: blockHeight,
       timestamp: Date.now(),
@@ -104,7 +103,7 @@ export class IndexerManager {
       await this.metadataRepo.upsert(
         {
           key: 'lastProcessedHeight',
-          value: block.block.header.number.toNumber(),
+          value: blockHeight,
         },
         { transaction: tx },
       );
@@ -115,7 +114,7 @@ export class IndexerManager {
         if (!u8aEq(operationHash, NULL_MERKEL_ROOT)) {
           const poiBlock = PoiBlock.create(
             blockHeight,
-            block.block.header.hash.toHex(),
+            blockContent.header.hash,
             operationHash,
             await this.poiService.getLatestPoiBlockHash(),
             this.project.path, //projectId // TODO, define projectId
@@ -402,7 +401,7 @@ export class IndexerManager {
   private async indexBlockForRuntimeDs(
     vm: IndexerSandbox,
     handlers: SubqlRuntimeHandler[],
-    { block, events, extrinsics }: BlockContent,
+    { header }: AlgorandBlock,
   ): Promise<void> {
     for (const handler of handlers) {
       switch (handler.kind) {
@@ -439,7 +438,7 @@ export class IndexerManager {
   private async indexBlockForCustomDs(
     ds: SubqlCustomDatasource<string, SubqlNetworkFilter>,
     vm: IndexerSandbox,
-    { block, events, extrinsics }: BlockContent,
+    { header }: AlgorandBlock,
   ): Promise<void> {
     const plugin = this.dsProcessorService.getDsProcessor(ds);
     const assets = await this.dsProcessorService.getAssets(ds);

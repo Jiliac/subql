@@ -25,18 +25,17 @@ import algosdk from 'algosdk';
 import { isUndefined, range, sortBy, uniqBy } from 'lodash';
 import { NodeConfig } from '../configure/NodeConfig';
 import { SubqueryProject } from '../configure/project.model';
+import * as AlgodUtil from '../utils/algod';
 import { getLogger } from '../utils/logger';
-import { profiler, profilerWrap } from '../utils/profiler';
 import { isBaseHandler, isCustomHandler } from '../utils/project';
 import { delay } from '../utils/promise';
-import * as SubstrateUtil from '../utils/substrate';
 import { getYargsOption } from '../yargs';
 import { ApiService } from './api.service';
 import { BlockedQueue } from './BlockedQueue';
 import { Dictionary, DictionaryService } from './dictionary.service';
 import { DsProcessorService } from './ds-processor.service';
 import { IndexerEvent } from './events';
-import { BlockContent } from './types';
+import { AlgorandBlock } from './types';
 
 const logger = getLogger('fetch');
 const BLOCK_TIME_VARIANCE = 5;
@@ -47,14 +46,6 @@ const LOW_THRESHOLD = 0.6;
 const MINIMUM_BATCH_SIZE = 5;
 
 const { argv } = getYargsOption();
-
-const fetchBlocksBatches = argv.profiler
-  ? profilerWrap(
-      SubstrateUtil.fetchBlocksBatches,
-      'SubstrateUtil',
-      'fetchBlocksBatches',
-    )
-  : SubstrateUtil.fetchBlocksBatches;
 
 function eventFilterToQueryEntry(
   filter: SubqlEventFilter,
@@ -115,7 +106,7 @@ export class FetchService implements OnApplicationShutdown {
   private latestFinalizedHeight: number;
   private latestProcessedHeight: number;
   private latestBufferedHeight: number;
-  private blockBuffer: BlockedQueue<BlockContent>;
+  private blockBuffer: BlockedQueue<AlgorandBlock>;
   private blockNumberBuffer: BlockedQueue<number>;
   private isShutdown = false;
   private parentSpecVersion = 1;
@@ -131,7 +122,7 @@ export class FetchService implements OnApplicationShutdown {
     private dsProcessorService: DsProcessorService,
     private eventEmitter: EventEmitter2,
   ) {
-    this.blockBuffer = new BlockedQueue<BlockContent>(
+    this.blockBuffer = new BlockedQueue<AlgorandBlock>(
       this.nodeConfig.batchSize * 3,
     );
     this.blockNumberBuffer = new BlockedQueue<number>(
@@ -222,7 +213,7 @@ export class FetchService implements OnApplicationShutdown {
     );
   }
 
-  register(next: (value: BlockContent) => Promise<void>): () => void {
+  register(next: (value: AlgorandBlock) => Promise<void>): () => void {
     let stopper = false;
     void (async () => {
       while (!stopper && !this.isShutdown) {
@@ -238,7 +229,7 @@ export class FetchService implements OnApplicationShutdown {
           } catch (e) {
             logger.error(
               e,
-              `failed to index block at height ${block.block.block.header.number.toString()} ${
+              `failed to index block at height ${block.header.round.toString()} ${
                 e.handler ? `${e.handler}(${e.handlerArgs ?? ''})` : ''
               }`,
             );
@@ -412,10 +403,9 @@ export class FetchService implements OnApplicationShutdown {
       }
 
       const bufferBlocks = await this.blockNumberBuffer.takeAll(takeCount);
-      const blocks = await fetchBlocksBatches(
-        this.api,
+      const blocks = await AlgodUtil.fetchBlocksBatches(
+        this.apiService,
         bufferBlocks,
-        this.parentSpecVersion,
       );
       logger.info(
         `fetch block [${bufferBlocks[0]},${
