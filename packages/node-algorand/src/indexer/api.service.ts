@@ -1,9 +1,10 @@
 // Copyright 2020-2021 OnFinality Limited authors & contributors
 // SPDX-License-Identifier: Apache-2.0
 
+import { assert } from 'console';
 import { Injectable, OnApplicationShutdown } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { ApiPromise, HttpProvider, WsProvider } from '@polkadot/api';
+import { HttpProvider, WsProvider } from '@polkadot/api';
 import { ApiOptions, RpcMethodResult } from '@polkadot/api/types';
 import { BlockHash, RuntimeVersion } from '@polkadot/types/interfaces';
 import { AnyFunction } from '@polkadot/types/types';
@@ -38,22 +39,16 @@ export class ApiService implements OnApplicationShutdown {
   }
 
   async init(): Promise<ApiService> {
-    const algodToken = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    const algodToken =
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
     const algodPort = 443;
     const { network } = this.project;
 
-    this.api = new algosdk.Algodv2(
-        algodToken,
-        network.endpoint,
-        algodPort,
-    );
+    this.api = new algosdk.Algodv2(algodToken, network.endpoint, algodPort);
 
-    this.genesisHash = await this.getFirstBlockHash()
+    this.genesisHash = await this.getFirstBlockHash();
 
-    if (
-      network.genesisHash &&
-      network.genesisHash !== this.genesisHash
-    ) {
+    if (network.genesisHash && network.genesisHash !== this.genesisHash) {
       const err = new Error(
         `Network genesisHash doesn't match expected genesisHash. expected="${network.genesisHash}" actual="${this.genesisHash}`,
       );
@@ -97,9 +92,24 @@ export class ApiService implements OnApplicationShutdown {
 
   private async getFirstBlockHash() {
     const blockReq = this.api.block(1);
-
     const block = await blockReq.do();
 
     return block.block.prev;
+  }
+
+  async getLastRound(): Promise<number> {
+    const status = await this.api.status().do();
+    const lastRound = status['last-round'];
+
+    return Promise.resolve(lastRound);
+  }
+
+  private async getBlock(n: number) {
+    assert(!(n === undefined || n === null), `Can't get block hash of ${n}`);
+
+    const blockReq = this.api.block(n);
+    const block = await blockReq.do();
+
+    return block;
   }
 }

@@ -4,7 +4,6 @@
 import path from 'path';
 import { Inject, Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { ApiPromise } from '@polkadot/api';
 import { hexToU8a, u8aEq } from '@polkadot/util';
 import {
   buildSchema,
@@ -350,9 +349,7 @@ export class IndexerManager {
   private filterDataSources(processedHeight: number): SubqlDatasource[] {
     let filteredDs = this.getDataSourcesForSpecName();
     if (filteredDs.length === 0) {
-      logger.error(
-        `Did not find any dataSource match with network specName`,
-      );
+      logger.error(`Did not find any dataSource match with network specName`);
       process.exit(1);
     }
     filteredDs = filteredDs.filter((ds) => ds.startBlock <= processedHeight);
@@ -398,8 +395,7 @@ export class IndexerManager {
   private getDataSourcesForSpecName(): SubqlDatasource[] {
     return this.project.dataSources.filter(
       (ds) =>
-        !ds.filter?.specName ||
-        ds.filter.specName === this.apiService.specName,
+        !ds.filter?.specName || ds.filter.specName === this.apiService.specName,
     );
   }
 

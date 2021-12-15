@@ -5,7 +5,6 @@ import { getHeapStatistics } from 'v8';
 import { Injectable, OnApplicationShutdown } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Interval } from '@nestjs/schedule';
-import { ApiPromise } from '@polkadot/api';
 import {
   isRuntimeDataSourceV0_2_0,
   RuntimeDataSourceV0_0_1,
@@ -22,6 +21,7 @@ import {
   SubqlHandlerFilter,
   DictionaryQueryEntry,
 } from '@subql/types';
+import algosdk from 'algosdk';
 import { isUndefined, range, sortBy, uniqBy } from 'lodash';
 import { NodeConfig } from '../configure/NodeConfig';
 import { SubqueryProject } from '../configure/project.model';
@@ -118,7 +118,7 @@ export class FetchService implements OnApplicationShutdown {
   private blockBuffer: BlockedQueue<BlockContent>;
   private blockNumberBuffer: BlockedQueue<number>;
   private isShutdown = false;
-  private parentSpecVersion: number;
+  private parentSpecVersion = 1;
   private useDictionary: boolean;
   private dictionaryQueryEntries?: DictionaryQueryEntry[];
   private batchSizeScale: number;
@@ -144,8 +144,8 @@ export class FetchService implements OnApplicationShutdown {
     this.isShutdown = true;
   }
 
-  get api(): ApiPromise {
-    return null;
+  get api(): algosdk.Algodv2 {
+    return this.apiService.getApi();
   }
 
   // TODO: if custom ds doesn't support dictionary, use baseFilter, if yes, let
@@ -158,7 +158,7 @@ export class FetchService implements OnApplicationShutdown {
         isRuntimeDataSourceV0_2_1(ds) ||
         !(ds as RuntimeDataSourceV0_0_1).filter?.specName ||
         (ds as RuntimeDataSourceV0_0_1).filter.specName ===
-          this.api.runtimeVersion.specName.toString(),
+          this.apiService.specName,
     );
     for (const ds of dataSources) {
       const plugin = isCustomDs(ds)
@@ -284,10 +284,8 @@ export class FetchService implements OnApplicationShutdown {
       return;
     }
     try {
-      const finalizedHead = await this.api.rpc.chain.getFinalizedHead();
-      const finalizedBlock = await this.api.rpc.chain.getBlock(finalizedHead);
-      const currentFinalizedHeight =
-        finalizedBlock.block.header.number.toNumber();
+      const currentFinalizedHeight = await this.apiService.getLastRound();
+
       if (this.latestFinalizedHeight !== currentFinalizedHeight) {
         this.latestFinalizedHeight = currentFinalizedHeight;
         this.eventEmitter.emit(IndexerEvent.BlockTarget, {
@@ -306,8 +304,7 @@ export class FetchService implements OnApplicationShutdown {
       return;
     }
     try {
-      const bestHeader = await this.api.rpc.chain.getHeader();
-      const currentBestHeight = bestHeader.number.toNumber();
+      const currentBestHeight = await this.apiService.getLastRound();
       if (this.latestBestHeight !== currentBestHeight) {
         this.latestBestHeight = currentBestHeight;
         this.eventEmitter.emit(IndexerEvent.BlockBest, {
@@ -334,8 +331,6 @@ export class FetchService implements OnApplicationShutdown {
   }
 
   async fillNextBlockBuffer(initBlockHeight: number): Promise<void> {
-    await this.fetchMeta(initBlockHeight);
-
     let startBlockHeight: number;
     let scaledBatchSize: number;
 
@@ -417,13 +412,10 @@ export class FetchService implements OnApplicationShutdown {
       }
 
       const bufferBlocks = await this.blockNumberBuffer.takeAll(takeCount);
-      const metadataChanged = await this.fetchMeta(
-        bufferBlocks[bufferBlocks.length - 1],
-      );
       const blocks = await fetchBlocksBatches(
         this.api,
         bufferBlocks,
-        metadataChanged ? undefined : this.parentSpecVersion,
+        this.parentSpecVersion,
       );
       logger.info(
         `fetch block [${bufferBlocks[0]},${
@@ -435,24 +427,6 @@ export class FetchService implements OnApplicationShutdown {
         value: this.blockBuffer.size,
       });
     }
-  }
-
-  @profiler(argv.profiler)
-  async fetchMeta(height: number): Promise<boolean> {
-    const parentBlockHash = await this.api.rpc.chain.getBlockHash(
-      Math.max(height - 1, 0),
-    );
-    const runtimeVersion = await this.api.rpc.state.getRuntimeVersion(
-      parentBlockHash,
-    );
-    const specVersion = runtimeVersion.specVersion.toNumber();
-    if (this.parentSpecVersion !== specVersion) {
-      const blockHash = await this.api.rpc.chain.getBlockHash(height);
-      await SubstrateUtil.prefetchMetadata(this.api, blockHash);
-      this.parentSpecVersion = specVersion;
-      return true;
-    }
-    return false;
   }
 
   private nextEndBlockHeight(
@@ -471,7 +445,7 @@ export class FetchService implements OnApplicationShutdown {
     { _metadata: metaData }: Dictionary,
     startBlockHeight: number,
   ): boolean {
-    if (metaData.genesisHash !== this.api.genesisHash.toString()) {
+    if (metaData.genesisHash !== this.apiService.genesisHash.toString()) {
       logger.warn(`Dictionary is disabled since now`);
       this.useDictionary = false;
       this.eventEmitter.emit(IndexerEvent.UsingDictionary, {
