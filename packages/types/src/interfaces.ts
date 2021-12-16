@@ -3,6 +3,19 @@
 
 import {Extrinsic, EventRecord, SignedBlock} from '@polkadot/types/interfaces';
 
+export type AlgorandBlock = {
+  header: AlgoHeader;
+  transactions: AlgoTransaction[];
+};
+
+export type AlgoHeader = {
+  hash: Uint8Array;
+  round: number;
+};
+
+export type AlgoTransaction = {
+};
+
 export interface Entity {
   id: string;
 }

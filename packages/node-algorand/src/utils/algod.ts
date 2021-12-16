@@ -16,10 +16,10 @@ import {
   SubstrateBlock,
   SubstrateEvent,
   SubstrateExtrinsic,
+  AlgorandBlock,
 } from '@subql/types';
 import { merge, range } from 'lodash';
 import { ApiService } from '../indexer/api.service';
-import { AlgorandBlock } from '../indexer/types';
 import { getLogger } from './logger';
 
 const logger = getLogger('fetch');

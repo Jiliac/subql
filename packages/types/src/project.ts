@@ -3,7 +3,12 @@
 
 import {ApiPromise} from '@polkadot/api';
 import {RegistryTypes} from '@polkadot/types/types';
-import {SubstrateBlock, SubstrateEvent, SubstrateExtrinsic} from './interfaces';
+import {
+    SubstrateBlock,
+    SubstrateEvent,
+    SubstrateExtrinsic,
+    AlgoHeader,
+} from './interfaces';
 
 export enum SubqlDatasourceKind {
   Runtime = 'substrate/Runtime',
@@ -13,18 +18,25 @@ export enum SubqlHandlerKind {
   Block = 'substrate/BlockHandler',
   Call = 'substrate/CallHandler',
   Event = 'substrate/EventHandler',
+
+  AHeader = 'algorand/HeaderHandler',
+  ATransaction = 'algorand/TransactionHadnler',
 }
 
 export type RuntimeHandlerInputMap = {
   [SubqlHandlerKind.Block]: SubstrateBlock;
   [SubqlHandlerKind.Event]: SubstrateEvent;
   [SubqlHandlerKind.Call]: SubstrateExtrinsic;
+  [SubqlHandlerKind.AHeader]: AlgoHeader;
+  [SubqlHandlerKind.ATransaction]: string;
 };
 
 type RuntimeFilterMap = {
   [SubqlHandlerKind.Block]: SubqlNetworkFilter;
   [SubqlHandlerKind.Event]: SubqlEventFilter;
   [SubqlHandlerKind.Call]: SubqlCallFilter;
+  [SubqlHandlerKind.AHeader]: null;
+  [SubqlHandlerKind.ATransaction]: null;
 };
 
 export interface ProjectManifest {
@@ -78,13 +90,25 @@ export interface SubqlEventHandler {
   filter?: SubqlEventFilter;
 }
 
+export interface SubqlAHeaderHandler {
+  handler: string;
+  kind: SubqlHandlerKind.AHeader;
+  filter?: null;
+}
+
+export interface SubqlATransactionHandler {
+  handler: string;
+  kind: SubqlHandlerKind.ATransaction;
+  filter?: null;
+}
+
 export interface SubqlCustomHandler<K extends string = string, F = Record<string, unknown>> {
   handler: string;
   kind: K;
   filter?: F;
 }
 
-export type SubqlRuntimeHandler = SubqlBlockHandler | SubqlCallHandler | SubqlEventHandler;
+export type SubqlRuntimeHandler = SubqlBlockHandler | SubqlCallHandler | SubqlEventHandler | SubqlAHeaderHandler | SubqlATransactionHandler;
 
 export type SubqlHandler = SubqlRuntimeHandler | SubqlCustomHandler<string, unknown>;
 

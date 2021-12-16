@@ -20,6 +20,7 @@ import {
   SubqlDatasource,
   SubqlHandlerFilter,
   DictionaryQueryEntry,
+  AlgorandBlock,
 } from '@subql/types';
 import algosdk from 'algosdk';
 import { isUndefined, range, sortBy, uniqBy } from 'lodash';
@@ -35,7 +36,6 @@ import { BlockedQueue } from './BlockedQueue';
 import { Dictionary, DictionaryService } from './dictionary.service';
 import { DsProcessorService } from './ds-processor.service';
 import { IndexerEvent } from './events';
-import { AlgorandBlock } from './types';
 
 const logger = getLogger('fetch');
 const BLOCK_TIME_VARIANCE = 5;
@@ -229,7 +229,7 @@ export class FetchService implements OnApplicationShutdown {
           } catch (e) {
             logger.error(
               e,
-              `failed to index block at height ${block.header.round.toString()} ${
+              `failed to index block at height ${block.header.round} ${
                 e.handler ? `${e.handler}(${e.handlerArgs ?? ''})` : ''
               }`,
             );

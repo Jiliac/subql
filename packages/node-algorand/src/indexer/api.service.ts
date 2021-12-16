@@ -8,9 +8,9 @@ import { RpcMethodResult } from '@polkadot/api/types';
 import { RuntimeVersion } from '@polkadot/types/interfaces';
 import { AnyFunction } from '@polkadot/types/types';
 import algosdk from 'algosdk';
+import { AlgorandBlock } from '@subql/types';
 import { SubqueryProject } from '../configure/project.model';
 import { getLogger } from '../utils/logger';
-import { AlgorandBlock } from './types';
 
 const NOT_SUPPORT = (name: string) => () => {
   throw new Error(`${name}() is not supported`);
@@ -36,8 +36,9 @@ export class ApiService implements OnApplicationShutdown {
   private currentRuntimeVersion: RuntimeVersion;
 
   genesisHash;
-  chain = 'algorand';
-  specName = 'mainnet-1.0';
+  chain: string = 'algorand';
+  specName: string = 'mainnet-1.0';
+  specVersion: number = 1;
 
   constructor(
     protected project: SubqueryProject,
@@ -130,6 +131,8 @@ export class ApiService implements OnApplicationShutdown {
         hash: blockHash,
         round: rawBlock.block.round,
       },
+      transactions: [
+      ],
     };
 
     return Promise.resolve(block);

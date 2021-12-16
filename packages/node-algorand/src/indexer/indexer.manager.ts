@@ -15,6 +15,7 @@ import {
   isRuntimeDs,
 } from '@subql/common';
 import {
+  AlgorandBlock,
   RuntimeHandlerInputMap,
   SecondLayerHandlerProcessor,
   SubqlCustomDatasource,
@@ -43,7 +44,6 @@ import { PoiService } from './poi.service';
 import { PoiBlock } from './PoiBlock';
 import { IndexerSandbox, SandboxService } from './sandbox.service';
 import { StoreService } from './store.service';
-import { AlgorandBlock } from './types';
 
 const { version: packageVersion } = require('../../package.json');
 
@@ -128,8 +128,8 @@ export class IndexerManager {
       throw e;
     }
     await tx.commit();
-    this.fetchService.latestProcessed(block.block.header.number.toNumber());
-    this.prevSpecVersion = block.specVersion;
+    this.fetchService.latestProcessed(blockHeight);
+    this.prevSpecVersion = this.apiService.specVersion;
     if (this.nodeConfig.proofOfIndex) {
       this.poiService.setLatestPoiBlockHash(poiBlockHash);
     }
@@ -401,32 +401,16 @@ export class IndexerManager {
   private async indexBlockForRuntimeDs(
     vm: IndexerSandbox,
     handlers: SubqlRuntimeHandler[],
-    { header }: AlgorandBlock,
+    { header, transactions }: AlgorandBlock,
   ): Promise<void> {
     for (const handler of handlers) {
       switch (handler.kind) {
-        case SubqlHandlerKind.Block:
-          if (SubstrateUtil.filterBlock(block, handler.filter)) {
-            await vm.securedExec(handler.handler, [block]);
-          }
+        case SubqlHandlerKind.AHeader:
+          await vm.securedExec(handler.handler, [header]);
           break;
-        case SubqlHandlerKind.Call: {
-          const filteredExtrinsics = SubstrateUtil.filterExtrinsics(
-            extrinsics,
-            handler.filter,
-          );
-          for (const e of filteredExtrinsics) {
-            await vm.securedExec(handler.handler, [e]);
-          }
-          break;
-        }
-        case SubqlHandlerKind.Event: {
-          const filteredEvents = SubstrateUtil.filterEvents(
-            events,
-            handler.filter,
-          );
-          for (const e of filteredEvents) {
-            await vm.securedExec(handler.handler, [e]);
+        case SubqlHandlerKind.ATransaction: {
+          for (const t of transactions) {
+            await vm.securedExec(handler.handler, [t]);
           }
           break;
         }
@@ -438,7 +422,7 @@ export class IndexerManager {
   private async indexBlockForCustomDs(
     ds: SubqlCustomDatasource<string, SubqlNetworkFilter>,
     vm: IndexerSandbox,
-    { header }: AlgorandBlock,
+    block: AlgorandBlock,
   ): Promise<void> {
     const plugin = this.dsProcessorService.getDsProcessor(ds);
     const assets = await this.dsProcessorService.getAssets(ds);
@@ -459,23 +443,6 @@ export class IndexerManager {
       }
     };
 
-    for (const handler of ds.mapping.handlers) {
-      const processor = plugin.handlerProcessors[handler.kind];
-      if (isBlockHandlerProcessor(processor)) {
-        await processData(processor, handler, [block]);
-      } else if (isCallHandlerProcessor(processor)) {
-        const filteredExtrinsics = SubstrateUtil.filterExtrinsics(
-          extrinsics,
-          processor.baseFilter,
-        );
-        await processData(processor, handler, filteredExtrinsics);
-      } else if (isEventHandlerProcessor(processor)) {
-        const filteredEvents = SubstrateUtil.filterEvents(
-          events,
-          processor.baseFilter,
-        );
-        await processData(processor, handler, filteredEvents);
-      }
-    }
+    // @TODO: implement.
   }
 }
